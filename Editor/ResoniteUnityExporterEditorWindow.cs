@@ -368,7 +368,11 @@ namespace ResoniteUnityExporter {
         {
             if (titleTexture == null)
             {
-                titleTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/ResoniteUnityExporter/ResoniteUnityImporterLogo.png");
+                titleTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/ResoniteUnityExporterPackage/ResoniteUnityExporterLogo.png");
+                if (titleTexture == null)
+                {
+                    titleTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Packages/io.github.phylliida.resonite-unity-exporter/ResoniteUnityExporterLogo.png");
+                }
             }
             // Display the title image at original size and centered
             if (titleTexture != null)
