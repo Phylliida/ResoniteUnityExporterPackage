@@ -1,0 +1,21 @@
+{
+  "name": "io.github.phylliida.resonite-unity-exporter",
+  "version": "0.1.2",
+  "description": "Export Avatars or Worlds from Unity into Resonite",
+  "displayName": "Resonite Unity Exporter",
+  "unity": "2022.3",
+  "author": {
+    "name": "Phylliida Dev",
+    "email": "phylliidadev@gmail.com",
+    "url": "https://github.com/Phylliida"
+  },
+  "repository": {
+    "url": "https://github.com/Phylliida/ResoniteUnityExporterPackage"
+  },
+  "peerDependencies": {
+  },
+  "dependencies": {
+  },
+  "keywords": ["resonite", "Resonite"],
+  "license": "MIT"
+}
