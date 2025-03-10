@@ -1,16 +1,11 @@
-﻿using ResoniteBridgeLib;
-using ResoniteUnityExporter;
-using ResoniteUnityExporterShared;
+﻿using ResoniteUnityExporterShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 #if RUE_HAS_VRCSDK
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.PhysBone.Components;
-using static VRC.Dynamics.PhysBoneManager;
 #endif
 
 namespace ResoniteUnityExporter.Converters
@@ -76,7 +71,7 @@ namespace ResoniteUnityExporter.Converters
             }
         }
 
-        public static IEnumerator<object> ConvertPhysBone(VRCPhysBone physBone, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertPhysBone(VRCPhysBone physBone, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             // this will auto add children if empty (sometimes VRCPhysBones do that)
             BoneInfo[] bones = GetBones(physBone, obj, out int depth);
@@ -96,10 +91,9 @@ namespace ResoniteUnityExporter.Converters
                 if (collider != null)
                 {
                     OutputHolder<object> componentRefID = new OutputHolder<object>();
-                    var en = hierarchy.transferManager.LookupComponent(collider, componentRefID);
-                    while (en.MoveNext())
+                    foreach (var en in hierarchy.transferManager.LookupComponent(collider, componentRefID))
                     {
-                        yield return null;
+                        yield return en;
                     }
                     if (componentRefID.value != null)
                     {
@@ -124,10 +118,9 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating dynamic bone chain";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, DynamicBoneChain_U2Res>("ImportDynamicBoneChain", boneChainData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, DynamicBoneChain_U2Res>("ImportDynamicBoneChain", boneChainData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
     }

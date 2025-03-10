@@ -1,20 +1,9 @@
-﻿using ResoniteBridgeLib;
-using ResoniteUnityExporter;
-using ResoniteUnityExporterShared;
-using System;
+﻿using ResoniteUnityExporterShared;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEditor.Graphs;
 using UnityEngine;
-using UnityEngine.SocialPlatforms;
-#if RUE_HAS_AVATAR_VRCSDK
-using VRC.SDK3.Avatars.Components;
-#endif
 #if RUE_HAS_VRCSDK
 using VRC.Core;
-using VRC.Utility;
 #endif
 
 namespace ResoniteUnityExporter.Converters
@@ -23,7 +12,7 @@ namespace ResoniteUnityExporter.Converters
     {
         // we could use vrc avatar descriptor, however some old avatars don't have that,
         // whereas pipeline manager is very common
-        public static IEnumerator<object> ConvertPipelineManager(PipelineManager pipelineManager, GameObject obj, RefID_U2Res objRefId, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertPipelineManager(PipelineManager pipelineManager, GameObject obj, RefID_U2Res objRefId, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             // not sending avatar, bail
             if (settings.makeAvatar)
@@ -31,16 +20,14 @@ namespace ResoniteUnityExporter.Converters
                 ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "";
                 // fetch all SkinnedMeshRenderer and MeshRenderer ref ids
                 OutputHolder<object[]> refIdsSkinned = new OutputHolder<object[]>();
-                var e = hierarchy.transferManager.LookupAllComponentsOfType<SkinnedMeshRenderer>(refIdsSkinned);
-                while (e.MoveNext())
+                foreach (var e in hierarchy.transferManager.LookupAllComponentsOfType<SkinnedMeshRenderer>(refIdsSkinned))
                 {
-                    yield return null;
+                    yield return e;
                 }
                 OutputHolder<object[]> refIdsUnskinned = new OutputHolder<object[]>();
-                var eu = hierarchy.transferManager.LookupAllComponentsOfType<MeshRenderer>(refIdsUnskinned);
-                while (eu.MoveNext())
+                foreach (var eu in hierarchy.transferManager.LookupAllComponentsOfType<MeshRenderer>(refIdsUnskinned))
                 {
-                    yield return null;
+                    yield return eu;
                 }
                 List<object> refIds = new List<object>(refIdsSkinned.value);
                 refIds.AddRange(refIdsUnskinned.value);
@@ -89,10 +76,9 @@ namespace ResoniteUnityExporter.Converters
                 yield return null;
                 ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating avatar";
                 yield return null;
-                var eout = hierarchy.Call<RefID_U2Res, Avatar_U2Res>("ImportAvatar", avatarData, output);
-                while (eout.MoveNext())
+                foreach (var eout in hierarchy.Call<RefID_U2Res, Avatar_U2Res>("ImportAvatar", avatarData, output))
                 {
-                    yield return null;
+                    yield return eout;
                 }
                 yield return null;              
             }

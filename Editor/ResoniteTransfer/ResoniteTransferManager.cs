@@ -48,7 +48,7 @@ namespace ResoniteUnityExporter
         public ResoniteTransferSettings settings;
         public Transform rootTransform;
 
-        public IEnumerator ConvertObjectAndChildren(string hierarchyName, Transform rootTransform, ResoniteBridgeClient bridgeClient, ResoniteTransferSettings settings)
+        public IEnumerable ConvertObjectAndChildren(string hierarchyName, Transform rootTransform, ResoniteBridgeClient bridgeClient, ResoniteTransferSettings settings)
         {
             this.settings = settings;
             this.rootTransform = rootTransform;
@@ -106,10 +106,9 @@ namespace ResoniteUnityExporter
                 ResoniteUnityExporterEditorWindow.DebugProgressString = "Copying hierarchy";
                 yield return null;
                 OutputHolder<HierarchyLookup> outputHierarchy = new OutputHolder<HierarchyLookup>();
-                var hierarchyEn = ResoniteTransferHierarchy.CreateHierarchy(this, hierarchyName, rootTransform, bridgeClient, outputHierarchy);
-                while (hierarchyEn.MoveNext())
+                foreach (var hierarchyEn in ResoniteTransferHierarchy.CreateHierarchy(this, hierarchyName, rootTransform, bridgeClient, outputHierarchy))
                 {
-                    yield return null;
+                    yield return hierarchyEn;
                 }
                 hierarchy = outputHierarchy.value;
                 yield return null;
@@ -198,10 +197,9 @@ namespace ResoniteUnityExporter
                         mainParentSlot = hierarchy.mainParentSlot
                     };
                     OutputHolder<object> output = new OutputHolder<object>();
-                    var en = hierarchy.Call<bool, FinalizeAvatarCreator_U2Res>("FinalizeAvatarCreator", finalizeData, output);
-                    while (en.MoveNext())
+                    foreach (var e in hierarchy.Call<bool, FinalizeAvatarCreator_U2Res>("FinalizeAvatarCreator", finalizeData, output))
                     {
-                        yield return null;
+                        yield return e;
                     }
                 }
                 if (settings.makePackage)
@@ -224,10 +222,9 @@ namespace ResoniteUnityExporter
                             packagePath = packagePath,
                         };
                         OutputHolder<object> output = new OutputHolder<object>();
-                        var en = hierarchy.Call<bool, PackageInfo_U2Res>("MakePackage", packageInfo, output);
-                        while (en.MoveNext())
+                        foreach (var e in hierarchy.Call<bool, PackageInfo_U2Res>("MakePackage", packageInfo, output))
                         {
-                            yield return null;
+                            yield return e;
                         }
                     }
 
@@ -260,7 +257,7 @@ namespace ResoniteUnityExporter
             }
         }
 
-        public void RegisterConverter<T>(Func<T, GameObject, RefID_U2Res, HierarchyLookup, ResoniteTransferSettings, OutputHolder<object>, IEnumerator<object>> converter) where T : UnityEngine.Component
+        public void RegisterConverter<T>(Func<T, GameObject, RefID_U2Res, HierarchyLookup, ResoniteTransferSettings, OutputHolder<object>, IEnumerable<object>> converter) where T : UnityEngine.Component
         {
             converters[typeof(T)] = converter;
         }
@@ -282,12 +279,12 @@ namespace ResoniteUnityExporter
 
         }
 
-        public IEnumerator<object> LookupAllComponentsOfType<T>(OutputHolder<object[]> outputs)
+        public IEnumerable<object> LookupAllComponentsOfType<T>(OutputHolder<object[]> outputs)
         {
             return LookupAllComponentsOfType(typeof(T), outputs);
         }
 
-        public IEnumerator<object> LookupAllComponentsOfType(Type type, OutputHolder<object[]> outputs)
+        public IEnumerable<object> LookupAllComponentsOfType(Type type, OutputHolder<object[]> outputs)
         {
             List<object> results = new List<object>();
             List<Transform> parentTransforms = new List<Transform>();
@@ -300,10 +297,9 @@ namespace ResoniteUnityExporter
                 foreach (var component in gameObject.GetComponentsInChildren(type))
                 {
                     OutputHolder<object> output = new OutputHolder<object>();
-                    var enumerator = LookupComponent(component, output);
-                    while (enumerator.MoveNext())
+                    foreach (var e in LookupComponent(component, output))
                     {
-                        yield return null;
+                        yield return e;
                     }
                     results.Add(output.value);
                 }
@@ -317,7 +313,7 @@ namespace ResoniteUnityExporter
             return converters.ContainsKey(component.GetType());
         }
 
-        public IEnumerator<object> LookupComponent(UnityEngine.Component component, OutputHolder<object> output)
+        public IEnumerable<object> LookupComponent(UnityEngine.Component component, OutputHolder<object> output)
         {
             if (componentLookup.TryGetValue(component.GetInstanceID().ToString(), out object componentObj))
             {
@@ -335,39 +331,32 @@ namespace ResoniteUnityExporter
                     convertMethod = convertComponentMethod.MakeGenericMethod(component.GetType());
                     methodCache.Add(component.GetType(), convertMethod);
                 }
-                IEnumerator en = (IEnumerator)convertMethod.Invoke(this, new object[]
+                foreach (var e in (IEnumerable<object>)convertMethod.Invoke(this, new object[]
                 {
                             component, hierarchy, settings, output
-                });
-                object result = en.Current;
-                while (en.MoveNext())
-                {
-                    result = en.Current;
-                    yield return null;
+                })) {
+                    yield return e;
                 }
+
                 componentLookup[component.GetInstanceID().ToString()] = output.value;
                 yield return null;
             }
         }
 
-        public IEnumerator<object> ConvertComponent<T>(T component, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> outputHolder) where T : UnityEngine.Component
+        public IEnumerable<object> ConvertComponent<T>(T component, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> outputHolder) where T : UnityEngine.Component
         {
             GameObject holder = component.transform.gameObject;
             if (converters.TryGetValue(typeof(T), out object converter))
             {
-                Func<T, GameObject, RefID_U2Res, HierarchyLookup, ResoniteTransferSettings, OutputHolder<object>, IEnumerator<object>>
+                Func<T, GameObject, RefID_U2Res, HierarchyLookup, ResoniteTransferSettings, OutputHolder<object>, IEnumerable<object>>
                     convertAction = 
-                    (Func<T, GameObject, RefID_U2Res, HierarchyLookup, ResoniteTransferSettings, OutputHolder<object>, IEnumerator<object>>)
+                    (Func<T, GameObject, RefID_U2Res, HierarchyLookup, ResoniteTransferSettings, OutputHolder<object>, IEnumerable<object>>)
                     converter;
                 RefID_U2Res holderRefID = hierarchy.LookupSlot(holder.GetInstanceID().ToString());
-                IEnumerator<object> en = convertAction(component, holder, holderRefID, hierarchy, settings, outputHolder);
-                object result = en.Current;
-                while (en.MoveNext())
+                foreach (var e in convertAction(component, holder, holderRefID, hierarchy, settings, outputHolder))
                 {
-                    result = en.Current;
-                    yield return null;
+                    yield return e;
                 }
-                yield return result;
             }
             else
             {

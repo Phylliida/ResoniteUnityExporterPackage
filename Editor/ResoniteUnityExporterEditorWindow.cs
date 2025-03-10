@@ -185,7 +185,7 @@ namespace ResoniteUnityExporter {
                 {
                     // don't show status for poll coroutine
                     debugCoroutine = false;
-                    CoroutinesInProgress.Add(GetServerInfo());
+                    CoroutinesInProgress.Add(GetServerInfo().GetEnumerator());
                     pollStopwatch.Stop();
                 }
             }
@@ -195,7 +195,7 @@ namespace ResoniteUnityExporter {
 
         bool debugCoroutine = true;
 
-        IEnumerator<object> GetServerInfo()
+        IEnumerable<object> GetServerInfo()
         {
             if (bridgeClient != null)
             {
@@ -605,7 +605,7 @@ namespace ResoniteUnityExporter {
                 RegisterConverters(transferManager, sendColliders, sendLights);
                 DebugProgressString = "";
                 
-                System.Collections.IEnumerator coroutine = transferManager.ConvertObjectAndChildren(exportSlotName, parentObject, bridgeClient, new ResoniteTransferSettings()
+                System.Collections.IEnumerable coroutine = transferManager.ConvertObjectAndChildren(exportSlotName, parentObject, bridgeClient, new ResoniteTransferSettings()
                 {
                     setupAvatarCreator = setupAvatarCreator,
                     setupIK = setupIK,
@@ -619,7 +619,7 @@ namespace ResoniteUnityExporter {
                 });
 
                 PrevCurTransferObjectCount = -1;
-                CoroutinesInProgress.Add(coroutine);
+                CoroutinesInProgress.Add(coroutine.GetEnumerator());
                 iters = 0;
                 debugCoroutine = true;
                 ranAnyRuns = true;

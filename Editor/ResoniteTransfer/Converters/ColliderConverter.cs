@@ -1,16 +1,14 @@
 
 
 using ResoniteUnityExporterShared;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
-using VRC.SDK3.Dynamics.Constraint.Components;
 
 namespace ResoniteUnityExporter.Converters
 {
     public class ColliderConverter
     {
-        public static IEnumerator<object> ConvertSphereCollider(SphereCollider sphereCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertSphereCollider(SphereCollider sphereCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending sphere collider on " + obj.name;
             SphereCollider_U2Res sphereColliderData = new SphereCollider_U2Res()
@@ -25,14 +23,13 @@ namespace ResoniteUnityExporter.Converters
                 radius = sphereCollider.radius * ResoniteTransferMesh.FIXED_SCALE_FACTOR
             };
 
-            var en = hierarchy.Call<RefID_U2Res, SphereCollider_U2Res>("ImportSphereCollider", sphereColliderData, output);
-            while (en.MoveNext())
+            foreach (var en in hierarchy.Call<RefID_U2Res, SphereCollider_U2Res>("ImportSphereCollider", sphereColliderData, output))
             {
-                yield return null;
+                yield return en;
             }
         }
 
-        public static IEnumerator<object> ConvertBoxCollider(BoxCollider boxCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertBoxCollider(BoxCollider boxCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending box collider on " + obj.name;
             BoxCollider_U2Res boxColliderData = new BoxCollider_U2Res()
@@ -52,15 +49,14 @@ namespace ResoniteUnityExporter.Converters
                 },
             };
 
-            var en = hierarchy.Call<RefID_U2Res, BoxCollider_U2Res>("ImportBoxCollider", boxColliderData, output);
-            while (en.MoveNext())
+            foreach (var en in hierarchy.Call<RefID_U2Res, BoxCollider_U2Res>("ImportBoxCollider", boxColliderData, output))
             {
-                yield return null;
+                yield return en;
             }
         }
 
 
-        public static IEnumerator<object> ConvertCapsuleCollider(CapsuleCollider capsuleCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertCapsuleCollider(CapsuleCollider capsuleCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending capsule collider on " + obj.name;
             CapsuleCollider_U2Res capsuleColliderData = new CapsuleCollider_U2Res()
@@ -77,15 +73,14 @@ namespace ResoniteUnityExporter.Converters
                 radius = capsuleCollider.radius * ResoniteTransferMesh.FIXED_SCALE_FACTOR
             };
 
-            var en = hierarchy.Call<RefID_U2Res, CapsuleCollider_U2Res>("ImportCapsuleCollider", capsuleColliderData, output);
-            while (en.MoveNext())
+            foreach (var en in hierarchy.Call<RefID_U2Res, CapsuleCollider_U2Res>("ImportCapsuleCollider", capsuleColliderData, output))
             {
-                yield return null;
+                yield return en;
             }
         }
 
 
-        public static IEnumerator<object> ConvertMeshCollider(MeshCollider meshCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertMeshCollider(MeshCollider meshCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             if (meshCollider.sharedMesh != null)
             {
@@ -94,10 +89,9 @@ namespace ResoniteUnityExporter.Converters
                 // if this is processed before that skinned mesh so it gets empty bones
                 // but having mesh collider for skinned mesh is cursed don't do that
                 // so its probably ok
-                var meshEn =  hierarchy.SendOrGetMesh(meshCollider.sharedMesh, new string[] { }, meshAssetRefIDHolder);
-                while (meshEn.MoveNext())
+                foreach (var meshEn in hierarchy.SendOrGetMesh(meshCollider.sharedMesh, new string[] { }, meshAssetRefIDHolder))
                 {
-                    yield return null;
+                    yield return meshEn;   
                 }
                 RefID_U2Res meshAsset = (RefID_U2Res)meshAssetRefIDHolder.value;
                 ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending mesh collider on " + obj.name;
@@ -114,10 +108,9 @@ namespace ResoniteUnityExporter.Converters
                     convex = meshCollider.convex,
                 };
 
-                var en = hierarchy.Call<RefID_U2Res, MeshCollider_U2Res>("ImportMeshCollider", meshColliderData, output);
-                while (en.MoveNext())
+                foreach (var en in hierarchy.Call<RefID_U2Res, MeshCollider_U2Res>("ImportMeshCollider", meshColliderData, output))
                 {
-                    yield return null;
+                    yield return en;
                 }
             }
         }

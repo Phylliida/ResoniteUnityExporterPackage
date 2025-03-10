@@ -66,17 +66,16 @@ namespace ResoniteUnityExporter
             }
 
         }
-        public static IEnumerator<object> SendTextureToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Texture2D texture, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
+        public static IEnumerable<object> SendTextureToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Texture2D texture, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
         {
             Texture2D_U2Res convertedTexture = ConvertTexture(texture);
             convertedTexture.rootAssetsSlot = hierarchyLookup.rootAssetsSlot;
 
             using (Timer _ = new Timer("Processing Texture"))
             {
-                var en = hierarchyLookup.Call<RefID_U2Res, Texture2D_U2Res>("ImportToTexture2D", convertedTexture, output);
-                while (en.MoveNext())
+                foreach (var e in hierarchyLookup.Call<RefID_U2Res, Texture2D_U2Res>("ImportToTexture2D", convertedTexture, output))
                 {
-                    yield return null;
+                    yield return e;
                 }
             }
         }

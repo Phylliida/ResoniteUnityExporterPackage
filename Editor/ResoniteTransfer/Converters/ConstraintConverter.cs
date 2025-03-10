@@ -1,16 +1,12 @@
-using ResoniteBridgeLib;
-using ResoniteUnityExporter;
 using ResoniteUnityExporterShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEditor.Graphs;
 using UnityEngine;
 using UnityEngine.Animations;
-using UnityEngine.SocialPlatforms;
+
 #if RUE_HAS_VRCSDK
+using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Constraint.Components;
 #endif
 
@@ -18,7 +14,62 @@ namespace ResoniteUnityExporter.Converters
 {
     public class ConstraintConverter
     {
-        public static IEnumerator<object> ConvertVRCPositionConstraint(VRCPositionConstraint vrcPositionConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static ConstraintSource_U2Res[] GetConstraintSources(List<ConstraintSource> sources, HierarchyLookup hierarchy)
+        {
+            return sources
+                .Where(source => source.sourceTransform != null)
+                .Select(source =>
+            {
+                return new ConstraintSource_U2Res()
+                {
+                    parentPositionOffset = new Float3_U2Res()
+                    {
+                        x = 0,
+                        y = 0,
+                        z = 0,
+                    },
+                    parentRotationOffset = new Float3_U2Res()
+                    {
+                        x = 0,
+                        y = 0,
+                        z = 0,
+                    },
+                    weight = source.weight,
+                    transform = hierarchy.LookupSlot(source.sourceTransform)
+                };
+            }).ToArray();
+        }
+
+
+#if RUE_HAS_VRCSDK
+        public static ConstraintSource_U2Res[] GetVRCConstraintSources(VRCConstraintSourceKeyableList sources, HierarchyLookup hierarchy)
+        {
+            return sources
+                .Where(source => source.SourceTransform != null)
+                .Select(source =>
+            {
+                return new ConstraintSource_U2Res()
+                {
+                    // we need to scale the positions
+                    parentPositionOffset = new Float3_U2Res()
+                    {
+                        x = source.ParentPositionOffset.x * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                        y = source.ParentPositionOffset.y * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                        z = source.ParentPositionOffset.z * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    },
+                    parentRotationOffset = new Float3_U2Res()
+                    {
+                        x = source.ParentRotationOffset.x,
+                        y = source.ParentRotationOffset.y,
+                        z = source.ParentRotationOffset.z,
+                    },
+                    weight = source.Weight,
+                    transform = hierarchy.LookupSlot(source.SourceTransform)
+                };
+            }).ToArray();
+        }
+
+        public static IEnumerable<object> ConvertVRCPositionConstraint(VRCPositionConstraint vrcPositionConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending position constraint on " + obj.name;
             yield return null;
@@ -28,24 +79,25 @@ namespace ResoniteUnityExporter.Converters
             {
                 hierarchy.TryLookupSlot(vrcPositionConstraint.TargetTransform, out targetTransform);
             }
-
+            
 
             PositionConstraint_U2Res positionConstraintData = new PositionConstraint_U2Res()
             {
+                sources = GetVRCConstraintSources(vrcPositionConstraint.Sources, hierarchy),
                 isActive = vrcPositionConstraint.IsActive,
                 weight = vrcPositionConstraint.GlobalWeight,
                 lockConstraint = vrcPositionConstraint.Locked,
                 positionAtRest = new Float3_U2Res()
                 {
-                    x = vrcPositionConstraint.PositionAtRest.x,
-                    y = vrcPositionConstraint.PositionAtRest.y,
-                    z = vrcPositionConstraint.PositionAtRest.z
+                    x = vrcPositionConstraint.PositionAtRest.x * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    y = vrcPositionConstraint.PositionAtRest.y * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    z = vrcPositionConstraint.PositionAtRest.z * ResoniteTransferMesh.FIXED_SCALE_FACTOR
                 },
                 positionOffset = new Float3_U2Res()
                 {
-                    x = vrcPositionConstraint.PositionOffset.x,
-                    y = vrcPositionConstraint.PositionOffset.y,
-                    z = vrcPositionConstraint.PositionOffset.z
+                    x = vrcPositionConstraint.PositionOffset.x * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    y = vrcPositionConstraint.PositionOffset.y * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    z = vrcPositionConstraint.PositionOffset.z * ResoniteTransferMesh.FIXED_SCALE_FACTOR
                 },
                 affectsPositionAxes = new Bool3_U2Res()
                 {
@@ -60,34 +112,38 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating position constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, PositionConstraint_U2Res>("ImportPositionConstraint", positionConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, PositionConstraint_U2Res>("ImportPositionConstraint", positionConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
-        public static IEnumerator<object> ConvertPositionConstraint(PositionConstraint positionConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#endif
+        public static IEnumerable<object> ConvertPositionConstraint(PositionConstraint positionConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending position constraint on " + obj.name;
             yield return null;
 
+            List<ConstraintSource> constraintSources = new List<ConstraintSource>(positionConstraint.sourceCount);
+            positionConstraint.GetSources(constraintSources);
+
             RefID_U2Res targetTransform = objRefID;
             PositionConstraint_U2Res positionConstraintData = new PositionConstraint_U2Res()
             {
+                sources = GetConstraintSources(constraintSources, hierarchy),
                 isActive = positionConstraint.constraintActive,
                 weight = positionConstraint.weight,
                 lockConstraint = positionConstraint.locked,
                 positionAtRest = new Float3_U2Res()
                 {
-                    x = positionConstraint.translationAtRest.x,
-                    y = positionConstraint.translationAtRest.y,
-                    z = positionConstraint.translationAtRest.z
+                    x = positionConstraint.translationAtRest.x * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    y = positionConstraint.translationAtRest.y * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    z = positionConstraint.translationAtRest.z * ResoniteTransferMesh.FIXED_SCALE_FACTOR
                 },
                 positionOffset = new Float3_U2Res()
                 {
-                    x = positionConstraint.translationOffset.x,
-                    y = positionConstraint.translationOffset.y,
-                    z = positionConstraint.translationOffset.z
+                    x = positionConstraint.translationOffset.x * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    y = positionConstraint.translationOffset.y * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    z = positionConstraint.translationOffset.z * ResoniteTransferMesh.FIXED_SCALE_FACTOR
                 },
                 affectsPositionAxes = new Bool3_U2Res()
                 {
@@ -102,10 +158,9 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating position constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, PositionConstraint_U2Res>("ImportPositionConstraint", positionConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, PositionConstraint_U2Res>("ImportPositionConstraint", positionConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
 
@@ -120,8 +175,9 @@ namespace ResoniteUnityExporter.Converters
 
 
 
+#if RUE_HAS_VRCSDK
 
-        public static IEnumerator<object> ConvertVRCRotationConstraint(VRCRotationConstraint vrcRotationConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertVRCRotationConstraint(VRCRotationConstraint vrcRotationConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending rotation constraint on " + obj.name;
             yield return null;
@@ -137,6 +193,7 @@ namespace ResoniteUnityExporter.Converters
 
             RotationConstraint_U2Res rotationConstraintData = new RotationConstraint_U2Res()
             {
+                sources = GetVRCConstraintSources(vrcRotationConstraint.Sources, hierarchy),
                 isActive = vrcRotationConstraint.IsActive,
                 weight = vrcRotationConstraint.GlobalWeight,
                 lockConstraint = vrcRotationConstraint.Locked,
@@ -165,21 +222,25 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating rotation constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, RotationConstraint_U2Res>("ImportRotationConstraint", rotationConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, RotationConstraint_U2Res>("ImportRotationConstraint", rotationConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
-        public static IEnumerator<object> ConvertRotationConstraint(RotationConstraint rotationConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#endif
+        public static IEnumerable<object> ConvertRotationConstraint(RotationConstraint rotationConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending rotation constraint on " + obj.name;
             yield return null;
 
             RefID_U2Res targetTransform = objRefID;
 
+            List<ConstraintSource> constraintSources = new List<ConstraintSource>(rotationConstraint.sourceCount);
+            rotationConstraint.GetSources(constraintSources);
+
             RotationConstraint_U2Res rotationConstraintData = new RotationConstraint_U2Res()
             {
+                sources = GetConstraintSources(constraintSources, hierarchy),
                 isActive = rotationConstraint.constraintActive,
                 weight = rotationConstraint.weight,
                 lockConstraint = rotationConstraint.locked,
@@ -208,10 +269,9 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating rotation constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, RotationConstraint_U2Res>("ImportRotationConstraint", rotationConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, RotationConstraint_U2Res>("ImportRotationConstraint", rotationConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
 
@@ -224,7 +284,8 @@ namespace ResoniteUnityExporter.Converters
 
 
 
-        public static IEnumerator<object> ConvertVRCScaleConstraint(VRCScaleConstraint vrcScaleConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#if RUE_HAS_VRCSDK
+        public static IEnumerable<object> ConvertVRCScaleConstraint(VRCScaleConstraint vrcScaleConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending scale constraint on " + obj.name;
             yield return null;
@@ -240,6 +301,7 @@ namespace ResoniteUnityExporter.Converters
 
             ScaleConstraint_U2Res scaleConstraintData = new ScaleConstraint_U2Res()
             {
+                sources = GetVRCConstraintSources(vrcScaleConstraint.Sources, hierarchy),
                 isActive = vrcScaleConstraint.IsActive,
                 weight = vrcScaleConstraint.GlobalWeight,
                 lockConstraint = vrcScaleConstraint.Locked,
@@ -268,21 +330,26 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating scale constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, ScaleConstraint_U2Res>("ImportScaleConstraint", scaleConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, ScaleConstraint_U2Res>("ImportScaleConstraint", scaleConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
-        public static IEnumerator<object> ConvertScaleConstraint(ScaleConstraint scaleConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#endif
+        public static IEnumerable<object> ConvertScaleConstraint(ScaleConstraint scaleConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending scale constraint on " + obj.name;
             yield return null;
+
+
+            List<ConstraintSource> constraintSources = new List<ConstraintSource>(scaleConstraint.sourceCount);
+            scaleConstraint.GetSources(constraintSources);
 
             RefID_U2Res targetTransform = objRefID;
 
             ScaleConstraint_U2Res scaleConstraintData = new ScaleConstraint_U2Res()
             {
+                sources = GetConstraintSources(constraintSources, hierarchy),
                 isActive = scaleConstraint.constraintActive,
                 weight = scaleConstraint.weight,
                 lockConstraint = scaleConstraint.locked,
@@ -311,10 +378,9 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating scale constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, ScaleConstraint_U2Res>("ImportScaleConstraint", scaleConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, ScaleConstraint_U2Res>("ImportScaleConstraint", scaleConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
 
@@ -326,8 +392,9 @@ namespace ResoniteUnityExporter.Converters
 
 
 
+#if RUE_HAS_VRCSDK
 
-        public static IEnumerator<object> ConvertVRCAimConstraint(VRCAimConstraint vrcAimConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertVRCAimConstraint(VRCAimConstraint vrcAimConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending aim constraint on " + obj.name;
             yield return null;
@@ -347,6 +414,7 @@ namespace ResoniteUnityExporter.Converters
 
             AimConstraint_U2Res aimConstraintData = new AimConstraint_U2Res()
             {
+                sources = GetVRCConstraintSources(vrcAimConstraint.Sources, hierarchy),
                 isActive = vrcAimConstraint.IsActive,
                 weight = vrcAimConstraint.GlobalWeight,
                 aimVector = new Float3_U2Res()
@@ -387,21 +455,24 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating aim constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, AimConstraint_U2Res>("ImportAimConstraint", aimConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, AimConstraint_U2Res>("ImportAimConstraint", aimConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
-        public static IEnumerator<object> ConvertAimConstraint(AimConstraint aimConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#endif
+
+        public static IEnumerable<object> ConvertAimConstraint(AimConstraint aimConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending aim constraint on " + obj.name;
             yield return null;
 
 
             RefID_U2Res targetTransform = objRefID;
-            
-            
+
+            List<ConstraintSource> constraintSources = new List<ConstraintSource>(aimConstraint.sourceCount);
+            aimConstraint.GetSources(constraintSources);
+
             WorldUpType_U2Res worldUpType = WorldUpType_U2Res.SceneUp;
             if (Enum.TryParse(typeof(WorldUpType_U2Res), aimConstraint.worldUpType.ToString(), true, out object worldUpEnum))
             {
@@ -410,6 +481,7 @@ namespace ResoniteUnityExporter.Converters
 
             AimConstraint_U2Res aimConstraintData = new AimConstraint_U2Res()
             {
+                sources = GetConstraintSources(constraintSources, hierarchy),
                 isActive = aimConstraint.constraintActive,
                 weight = aimConstraint.weight,
                 aimVector = new Float3_U2Res()
@@ -451,10 +523,9 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating aim constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, AimConstraint_U2Res>("ImportAimConstraint", aimConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, AimConstraint_U2Res>("ImportAimConstraint", aimConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
 
@@ -482,7 +553,8 @@ namespace ResoniteUnityExporter.Converters
 
 
 
-        public static IEnumerator<object> ConvertVRCParentConstraint(VRCParentConstraint vrcParentConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#if RUE_HAS_VRCSDK
+        public static IEnumerable<object> ConvertVRCParentConstraint(VRCParentConstraint vrcParentConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending parent constraint on " + obj.name;
             yield return null;
@@ -497,14 +569,15 @@ namespace ResoniteUnityExporter.Converters
 
             ParentConstraint_U2Res parentConstraintData = new ParentConstraint_U2Res()
             {
+                sources = GetVRCConstraintSources(vrcParentConstraint.Sources, hierarchy),
                 isActive = vrcParentConstraint.IsActive,
                 weight = vrcParentConstraint.GlobalWeight,                
                 lockConstraint = vrcParentConstraint.Locked,
                 positionAtRest = new Float3_U2Res()
                 {
-                    x = vrcParentConstraint.PositionAtRest.x,
-                    y = vrcParentConstraint.PositionAtRest.y,
-                    z = vrcParentConstraint.PositionAtRest.z
+                    x = vrcParentConstraint.PositionAtRest.x * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    y = vrcParentConstraint.PositionAtRest.y * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    z = vrcParentConstraint.PositionAtRest.z * ResoniteTransferMesh.FIXED_SCALE_FACTOR
                 },
                 rotationAtRest = new Float3_U2Res()
                 {
@@ -530,13 +603,14 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating parent constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, ParentConstraint_U2Res>("ImportParentConstraint", parentConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, ParentConstraint_U2Res>("ImportParentConstraint", parentConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
-        public static IEnumerator<object> ConvertParentConstraint(ParentConstraint parentConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#endif
+        
+        public static IEnumerable<object> ConvertParentConstraint(ParentConstraint parentConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending parent constraint on " + obj.name;
             yield return null;
@@ -544,17 +618,20 @@ namespace ResoniteUnityExporter.Converters
 
             RefID_U2Res targetTransform = objRefID;
 
+            List<ConstraintSource> constraintSources = new List<ConstraintSource>(parentConstraint.sourceCount);
+            parentConstraint.GetSources(constraintSources);
 
             ParentConstraint_U2Res parentConstraintData = new ParentConstraint_U2Res()
             {
+                sources = GetConstraintSources(constraintSources, hierarchy),
                 isActive = parentConstraint.constraintActive,
                 weight = parentConstraint.weight,
                 lockConstraint = parentConstraint.locked,
                 positionAtRest = new Float3_U2Res()
                 {
-                    x = parentConstraint.translationAtRest.x,
-                    y = parentConstraint.translationAtRest.y,
-                    z = parentConstraint.translationAtRest.z
+                    x = parentConstraint.translationAtRest.x * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    y = parentConstraint.translationAtRest.y * ResoniteTransferMesh.FIXED_SCALE_FACTOR,
+                    z = parentConstraint.translationAtRest.z * ResoniteTransferMesh.FIXED_SCALE_FACTOR
                 },
                 rotationAtRest = new Float3_U2Res()
                 {
@@ -580,10 +657,9 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating parent constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, ParentConstraint_U2Res>("ImportParentConstraint", parentConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, ParentConstraint_U2Res>("ImportParentConstraint", parentConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
 
@@ -600,8 +676,9 @@ namespace ResoniteUnityExporter.Converters
 
 
 
+#if RUE_HAS_VRCSDK
 
-        public static IEnumerator<object> ConvertVRCLookAtConstraint(VRCLookAtConstraint vrcLookAtConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertVRCLookAtConstraint(VRCLookAtConstraint vrcLookAtConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending look at constraint on " + obj.name;
             yield return null;
@@ -625,6 +702,7 @@ namespace ResoniteUnityExporter.Converters
 
             LookAtConstraint_U2Res lookAtConstraintData = new LookAtConstraint_U2Res()
             {
+                sources = GetVRCConstraintSources(vrcLookAtConstraint.Sources, hierarchy),
                 isActive = vrcLookAtConstraint.IsActive,
                 weight = vrcLookAtConstraint.GlobalWeight,
                 useUpObject = vrcLookAtConstraint.UseUpTransform,
@@ -649,13 +727,13 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating look at constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, LookAtConstraint_U2Res>("ImportLookAtConstraint", lookAtConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, LookAtConstraint_U2Res>("ImportLookAtConstraint", lookAtConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
-        public static IEnumerator<object> ConvertLookAtConstraint(LookAtConstraint lookAtConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+#endif
+        public static IEnumerable<object> ConvertLookAtConstraint(LookAtConstraint lookAtConstraint, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending look at constraint on " + obj.name;
             yield return null;
@@ -670,10 +748,12 @@ namespace ResoniteUnityExporter.Converters
             {
                 hierarchy.TryLookupSlot(lookAtConstraint.worldUpObject, out worldUpTransform);
             }
-
+            List<ConstraintSource> constraintSources = new List<ConstraintSource>(lookAtConstraint.sourceCount);
+            lookAtConstraint.GetSources(constraintSources);
 
             LookAtConstraint_U2Res lookAtConstraintData = new LookAtConstraint_U2Res()
             {
+                sources = GetConstraintSources(constraintSources, hierarchy),
                 isActive = lookAtConstraint.constraintActive,
                 weight = lookAtConstraint.weight,
                 useUpObject = lookAtConstraint.useUpObject,
@@ -698,10 +778,9 @@ namespace ResoniteUnityExporter.Converters
             yield return null;
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating look at constraint";
             yield return null;
-            var e = hierarchy.Call<RefID_U2Res, LookAtConstraint_U2Res>("ImportLookAtConstraint", lookAtConstraintData, output);
-            while (e.MoveNext())
+            foreach (var e in hierarchy.Call<RefID_U2Res, LookAtConstraint_U2Res>("ImportLookAtConstraint", lookAtConstraintData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
 

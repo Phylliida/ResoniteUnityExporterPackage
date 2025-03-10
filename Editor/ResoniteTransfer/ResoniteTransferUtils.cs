@@ -20,9 +20,9 @@ namespace ResoniteUnityExporter
         public Exception CaughtException { get; private set; }
         public bool ExceptionOccurred { get; private set; }
 
-        public ExceptionSafeIterator(IEnumerator<object> innerEnumerator)
+        public ExceptionSafeIterator(IEnumerable<object> innerEnumerator)
         {
-            _innerEnumerator = innerEnumerator;
+            _innerEnumerator = innerEnumerator.GetEnumerator();
             Current = null;
         }
 

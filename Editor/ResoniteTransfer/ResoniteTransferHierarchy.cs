@@ -1,4 +1,5 @@
 ﻿using MemoryMappedFileIPC;
+using Mono.Cecil;
 using ResoniteBridgeLib;
 using ResoniteUnityExporter.Converters;
 using ResoniteUnityExporterShared;
@@ -6,6 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Animations;
+using VRC.Dynamics;
+using static VRC.Dynamics.PhysBoneManager;
 
 namespace ResoniteUnityExporter
 {
@@ -85,17 +89,16 @@ namespace ResoniteUnityExporter
             return refIdLookup.TryGetValue(transform.gameObject.GetInstanceID().ToString(), out slotRefID);
         }
 
-        delegate IEnumerator<object> CreateAssetDelegate();
+        delegate IEnumerable<object> CreateAssetDelegate();
 
-        IEnumerator<object> CreateAssetIfNotExist(string assetId, CreateAssetDelegate createAsset, OutputHolder<object> output)
+        IEnumerable<object> CreateAssetIfNotExist(string assetId, CreateAssetDelegate createAsset, OutputHolder<object> output)
         {
             RefID_U2Res outRefId;
             if (!assetLookup.TryGetValue(assetId, out outRefId))
             {
-                var en = createAsset();
-                while (en.MoveNext())
+                foreach (var en in createAsset())
                 {
-                    yield return null;
+                    yield return en;
                 }
                 outRefId = (RefID_U2Res)output.value;
                 assetLookup.Add(assetId, outRefId);
@@ -103,12 +106,11 @@ namespace ResoniteUnityExporter
             output.value = outRefId;
         }
 
-        public IEnumerator<object> Call<OutType, InType>(string callMethodName, InType input, OutputHolder<object> output)
+        public IEnumerable<object> Call<OutType, InType>(string callMethodName, InType input, OutputHolder<object> output)
         {
-            var en = Call<OutType, InType>(bridgeClient, callMethodName, input, output);
-            while (en.MoveNext())
+            foreach (var en in Call<OutType, InType>(bridgeClient, callMethodName, input, output))
             {
-                yield return en.Current;
+                yield return en;
             }
         }
 
@@ -123,7 +125,7 @@ namespace ResoniteUnityExporter
 
 
 
-        public static IEnumerator<object> Call<OutType, InType>(ResoniteBridgeClient bridgeClient, string callMethodName, InType input, OutputHolder<object> output)
+        public static IEnumerable<object> Call<OutType, InType>(ResoniteBridgeClient bridgeClient, string callMethodName, InType input, OutputHolder<object> output)
         {
             bool hasError = false;
             System.Threading.Tasks.TaskCompletionSource<bool> taskCompletionSource = new System.Threading.Tasks.TaskCompletionSource<bool>();
@@ -174,39 +176,36 @@ namespace ResoniteUnityExporter
             }
         } 
 
-        public IEnumerator<object> SendOrGetMesh(UnityEngine.Mesh mesh, string[] boneNames, OutputHolder<object> output)
+        public IEnumerable<object> SendOrGetMesh(UnityEngine.Mesh mesh, string[] boneNames, OutputHolder<object> output)
         {
-            var en = CreateAssetIfNotExist(mesh.GetInstanceID().ToString(), () =>
+            foreach (var en in CreateAssetIfNotExist(mesh.GetInstanceID().ToString(), () =>
             {
                 return ResoniteTransferMesh.SendMeshToResonite(this, mesh, boneNames, bridgeClient, output);
-            }, output);
-            while (en.MoveNext())
+            }, output))
             {
-                yield return null;
+                yield return en;
             }
         }
 
-        public IEnumerator<object> SendOrGetMaterial(UnityEngine.Material material, OutputHolder<object> output)
+        public IEnumerable<object> SendOrGetMaterial(UnityEngine.Material material, OutputHolder<object> output)
         {
-            var en = CreateAssetIfNotExist(material.GetInstanceID().ToString(), () =>
+            foreach (var en in CreateAssetIfNotExist(material.GetInstanceID().ToString(), () =>
             {
                 return ResoniteTransferMaterial.SendMaterialToResonite(this, material, bridgeClient, output);
-            }, output);
-            while (en.MoveNext())
+            }, output))
             {
-                yield return null;
+                yield return en;
             }
         }
 
-        public IEnumerator<object> SendOrGetTexture(UnityEngine.Texture2D texture, OutputHolder<object> output)
+        public IEnumerable<object> SendOrGetTexture(UnityEngine.Texture2D texture, OutputHolder<object> output)
         {
-            var en = CreateAssetIfNotExist(texture.GetInstanceID().ToString(), () =>
+            foreach (var en in CreateAssetIfNotExist(texture.GetInstanceID().ToString(), () =>
             {
                 return ResoniteTransferTexture2D.SendTextureToResonite(this, texture, bridgeClient, output);
-            }, output);
-            while (en.MoveNext())
+            }, output))
             {
-                yield return null;
+                yield return en;
             }
         }
     }
@@ -254,7 +253,159 @@ namespace ResoniteUnityExporter
             return false;
         }
 
-        public static IEnumerator<object> CreateHierarchy(ResoniteTransferManager manager, string hierarchyName, Transform rootTransform, ResoniteBridgeClient bridgeClient, OutputHolder<HierarchyLookup> output)
+        public static IEnumerable<GameObject> GetAttachedObjects(GameObject rootObj)
+        {
+            // LOD
+            foreach (LODGroup lodGroup in rootObj.GetComponentsInChildren<LODGroup>())
+            {
+                // add lod group references
+                foreach (LOD lod in lodGroup.GetLODs())
+                {
+                    foreach (MeshRenderer renderer in lod.renderers)
+                    {
+                        if (renderer != null)
+                        {
+                            yield return renderer.gameObject;
+                        }
+                    }
+                }
+            }
+
+            // skinned mesh renderer bones
+            foreach (SkinnedMeshRenderer skinnedMeshRenderer in rootObj.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                if (skinnedMeshRenderer.bones != null)
+                {
+                    foreach (Transform bone in skinnedMeshRenderer.bones)
+                    {
+                        // if outside of hierarchy we are exporting, also include it
+                        if (bone != null)
+                        {
+                            yield return bone.gameObject;
+                        }
+                    }
+                }
+            }
+
+#if RUE_HAS_AVATAR_VRCSDK
+            foreach (VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone physBone in rootObj.GetComponentsInChildren<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>())
+            {
+                foreach (PhysBoneConverter.BoneInfo bone in PhysBoneConverter.GetBones(physBone, physBone.gameObject, out int depth))
+                {
+                    Transform boneTransform = bone.transform;
+                    if (boneTransform != null)
+                    {
+                        yield return boneTransform.gameObject;
+                    }
+                }
+                if (physBone.colliders != null)
+                {
+                    foreach (VRC.Dynamics.VRCPhysBoneColliderBase collider in physBone.colliders)
+                    {
+                        if (collider != null)
+                        {
+                            yield return collider.gameObject;
+                        }
+                    }
+                }
+            }
+
+            foreach (VRCConstraintBase constraint in rootObj.GetComponentsInChildren<VRCConstraintBase>())
+            {
+                foreach (var source in constraint.Sources)
+                {
+                    if (source.SourceTransform != null)
+                    {
+                        yield return source.SourceTransform.gameObject;
+                    }
+                }
+            }
+#endif
+
+            // constraint sources
+            foreach (PositionConstraint constraint in rootObj.GetComponentsInChildren<PositionConstraint>())
+            {
+                List<ConstraintSource> sources = new List<ConstraintSource>(constraint.sourceCount);
+                constraint.GetSources(sources);
+                foreach (ConstraintSource source in sources)
+                {
+                    if (source.sourceTransform != null)
+                    {
+                        yield return source.sourceTransform.gameObject;
+                    }
+                }
+            }
+
+            foreach (RotationConstraint constraint in rootObj.GetComponentsInChildren<RotationConstraint>())
+            {
+                List<ConstraintSource> sources = new List<ConstraintSource>(constraint.sourceCount);
+                constraint.GetSources(sources);
+                foreach (ConstraintSource source in sources)
+                {
+                    if (source.sourceTransform != null)
+                    {
+                        yield return source.sourceTransform.gameObject;
+                    }
+                }
+            }
+
+
+
+            foreach (ScaleConstraint constraint in rootObj.GetComponentsInChildren<ScaleConstraint>())
+            {
+                List<ConstraintSource> sources = new List<ConstraintSource>(constraint.sourceCount);
+                constraint.GetSources(sources);
+                foreach (ConstraintSource source in sources)
+                {
+                    if (source.sourceTransform != null)
+                    {
+                        yield return source.sourceTransform.gameObject;
+                    }
+                }
+            }
+
+            foreach (ParentConstraint constraint in rootObj.GetComponentsInChildren<ParentConstraint>())
+            {
+                List<ConstraintSource> sources = new List<ConstraintSource>(constraint.sourceCount);
+                constraint.GetSources(sources);
+                foreach (ConstraintSource source in sources)
+                {
+                    if (source.sourceTransform != null)
+                    {
+                        yield return source.sourceTransform.gameObject;
+                    }
+                }
+            }
+
+            foreach (LookAtConstraint constraint in rootObj.GetComponentsInChildren<LookAtConstraint>())
+            {
+                List<ConstraintSource> sources = new List<ConstraintSource>(constraint.sourceCount);
+                constraint.GetSources(sources);
+                foreach (ConstraintSource source in sources)
+                {
+                    if (source.sourceTransform != null)
+                    {
+                        yield return source.sourceTransform.gameObject;
+                    }
+                }
+            }
+
+            foreach (AimConstraint constraint in rootObj.GetComponentsInChildren<AimConstraint>())
+            {
+                List<ConstraintSource> sources = new List<ConstraintSource>(constraint.sourceCount);
+                constraint.GetSources(sources);
+                foreach (ConstraintSource source in sources)
+                {
+                    if (source.sourceTransform != null)
+                    {
+                        yield return source.sourceTransform.gameObject;
+                    }
+                }
+            }
+        }
+
+
+        public static IEnumerable<object> CreateHierarchy(ResoniteTransferManager manager, string hierarchyName, Transform rootTransform, ResoniteBridgeClient bridgeClient, OutputHolder<HierarchyLookup> output)
         {
             // if rootTransform is null, grab all objects in scene
             GameObject[] gameObjects = (rootTransform == null)
@@ -274,50 +425,16 @@ namespace ResoniteUnityExporter
                 foundSomething = false;
                 foreach (GameObject rootObj in curRootObjects)
                 {
-                    foreach (SkinnedMeshRenderer skinnedMeshRenderer in rootObj.GetComponentsInChildren<SkinnedMeshRenderer>())
+                    foreach (GameObject attachedObject in GetAttachedObjects(rootObj))
                     {
-                        if (skinnedMeshRenderer.bones != null)
+                        if (attachedObject != null
+                            && !IsInHierarchy(gameObjects, attachedObject.transform)
+                            && !IsParentOrMeContainedInList(bonusObjectsOutsideHierarchy, attachedObject.transform))
                         {
-                            foreach (Transform bone in skinnedMeshRenderer.bones)
-                            {
-                                // if outside of hierarchy we are exporting, also include it
-                                if (bone != null && !IsInHierarchy(gameObjects, bone) && !IsParentOrMeContainedInList(bonusObjectsOutsideHierarchy, bone))
-                                {
-                                    foundSomething = true;
-                                    bonusObjectsOutsideHierarchy.Add(bone.gameObject);
-                                }
-                            }
+                            foundSomething = true;
+                            bonusObjectsOutsideHierarchy.Add(attachedObject);
                         }
                     }
-#if RUE_HAS_AVATAR_VRCSDK
-                    //foreach (VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBoneCollider collider in rootObj.GetComponentsInChildren<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBoneCollider>())
-                    //{
-
-                    //}
-                    foreach (VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone physBone in rootObj.GetComponentsInChildren<VRC.SDK3.Dynamics.PhysBone.Components.VRCPhysBone>())
-                    {
-                        foreach (PhysBoneConverter.BoneInfo bone in PhysBoneConverter.GetBones(physBone, physBone.gameObject, out int depth))
-                        {
-                            Transform boneTransform = bone.transform;
-                            if (boneTransform != null && !IsInHierarchy(gameObjects, boneTransform) && !IsParentOrMeContainedInList(bonusObjectsOutsideHierarchy, boneTransform))
-                            {
-                                foundSomething = true;
-                                bonusObjectsOutsideHierarchy.Add(boneTransform.gameObject);
-                            }
-                        }
-                        if (physBone.colliders != null)
-                        {
-                            foreach (VRC.Dynamics.VRCPhysBoneColliderBase collider in physBone.colliders)
-                            {
-                                if (collider != null && collider.transform != null && !IsInHierarchy(gameObjects, collider.transform) && !IsParentOrMeContainedInList(bonusObjectsOutsideHierarchy, collider.transform))
-                                {
-                                    foundSomething = true;
-                                    bonusObjectsOutsideHierarchy.Add(collider.gameObject);
-                                }
-                            }
-                        }
-                    }
-#endif
                 }
             }
 
@@ -353,15 +470,13 @@ namespace ResoniteUnityExporter
 
             OutputHolder<object> outputLookups = new OutputHolder<object>();
 
-            var en = HierarchyLookup.Call<ObjectLookups_U2Res, ObjectHierarchy_U2Res>(
+            foreach (var en in HierarchyLookup.Call<ObjectLookups_U2Res, ObjectHierarchy_U2Res>(
                 bridgeClient,
                 "ImportSlotHierarchy",
                 hierarchyData,
-                outputLookups);
-
-            while (en.MoveNext())
+                outputLookups))
             {
-                yield return null;
+                yield return en;
             }
 
             ObjectLookups_U2Res lookups = (ObjectLookups_U2Res)outputLookups.value;

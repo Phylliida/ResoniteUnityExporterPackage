@@ -9,7 +9,7 @@ namespace ResoniteUnityExporter.Converters
 {
     public class LODGroupConverter
     {
-        public static IEnumerator<object> ConvertLODGroup(LODGroup lodGroup, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertLODGroup(LODGroup lodGroup, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending LOD group on " + obj.name;
             LODGroup_U2Res lodGroupData = new LODGroup_U2Res()
@@ -41,10 +41,9 @@ namespace ResoniteUnityExporter.Converters
                 foreach (Renderer renderer in renderers)
                 {
                     OutputHolder<object> rendererRefIDHolder = new OutputHolder<object>();
-                    var rendererEn = hierarchy.transferManager.LookupComponent(renderer, rendererRefIDHolder);
-                    while (rendererEn.MoveNext())
+                    foreach (var rendererEn in hierarchy.transferManager.LookupComponent(renderer, rendererRefIDHolder))
                     {
-                        yield return null;
+                        yield return rendererEn;
                     }
                     if (rendererRefIDHolder.value != null)
                     {
@@ -65,10 +64,9 @@ namespace ResoniteUnityExporter.Converters
             lodGroupData.LODs = lods.ToArray();
 
             ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending LOD group on " + obj.name;
-            var en = hierarchy.Call<RefID_U2Res, LODGroup_U2Res>("ImportLODGroup", lodGroupData, output);
-            while (en.MoveNext())
+            foreach (var en in hierarchy.Call<RefID_U2Res, LODGroup_U2Res>("ImportLODGroup", lodGroupData, output))
             {
-                yield return null;
+                yield return en;
             }
         }
     }

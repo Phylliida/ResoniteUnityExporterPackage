@@ -355,7 +355,7 @@ namespace ResoniteUnityExporter
 
         // resonite wants things scaled up for ik to work correctly, so do that
         public static float FIXED_SCALE_FACTOR = 100.0f;
-        public static IEnumerator<object> SendMeshToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Mesh mesh, string[] boneNames, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
+        public static IEnumerable<object> SendMeshToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Mesh mesh, string[] boneNames, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
         {
             StaticMesh_U2Res convertedMesh = ConvertMesh(mesh, boneNames.ToArray(), FIXED_SCALE_FACTOR);
             convertedMesh.rootAssetsSlot = hierarchyLookup.rootAssetsSlot;
@@ -370,10 +370,9 @@ namespace ResoniteUnityExporter
             }
             using (Timer _ = new Timer("Processing Static Mesh"))
             {
-                var en = hierarchyLookup.Call<RefID_U2Res, StaticMesh_U2Res>("ImportToStaticMesh", convertedMesh, output);
-                while (en.MoveNext())
+                foreach (var e in hierarchyLookup.Call<RefID_U2Res, StaticMesh_U2Res>("ImportToStaticMesh", convertedMesh, output))
                 {
-                    yield return null;
+                    yield return e;
                 }
             }
         }

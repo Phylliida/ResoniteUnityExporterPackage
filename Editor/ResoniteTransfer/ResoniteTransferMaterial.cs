@@ -11,7 +11,7 @@ namespace ResoniteUnityExporter
     public class ResoniteTransferMaterial
     {
 
-        public static IEnumerator<object> SendMaterialToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Material material, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
+        public static IEnumerable<object> SendMaterialToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Material material, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
         {
             Material_U2Res materialData = new Material_U2Res();
             materialData.rootAssetsSlot = hierarchyLookup.rootAssetsSlot;
@@ -26,10 +26,9 @@ namespace ResoniteUnityExporter
                     texture2DNames.Add(texName);
                     var textureOutputHolder = new OutputHolder<object>();
 
-                    var texEn = hierarchyLookup.SendOrGetTexture(tex2D, textureOutputHolder);
-                    while (texEn.MoveNext())
+                    foreach (var texEn in hierarchyLookup.SendOrGetTexture(tex2D, textureOutputHolder))
                     {
-                        yield return null;
+                        yield return texEn;
                     }
                     texture2DValues.Add((RefID_U2Res)textureOutputHolder.value);
                 }
@@ -67,10 +66,9 @@ namespace ResoniteUnityExporter
                 Debug.LogWarning("Unknown material map for material: " + material.name + " with shader " + material.shader);
             }
 
-            var en = hierarchyLookup.Call<RefID_U2Res, Material_U2Res>("ImportToMaterial", materialData, output);
-            while (en.MoveNext())
+            foreach (var e in hierarchyLookup.Call<RefID_U2Res, Material_U2Res>("ImportToMaterial", materialData, output))
             {
-                yield return null;
+                yield return e;
             }
         }
     }

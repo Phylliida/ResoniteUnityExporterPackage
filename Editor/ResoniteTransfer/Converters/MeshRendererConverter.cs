@@ -1,20 +1,12 @@
-﻿using ResoniteBridgeLib;
-using ResoniteUnityExporter;
-using ResoniteUnityExporterShared;
-using System;
+﻿using ResoniteUnityExporterShared;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEditor.Graphs;
 using UnityEngine;
-using UnityEngine.SocialPlatforms;
 
 namespace ResoniteUnityExporter.Converters
 {
     public class MeshRendererConverter
     {
-        public static IEnumerator<object> ConvertMeshRenderer(MeshRenderer renderer, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
+        public static IEnumerable<object> ConvertMeshRenderer(MeshRenderer renderer, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             if (renderer.GetComponent<MeshFilter>() != null && renderer.GetComponent<MeshFilter>().sharedMesh != null)
             {
@@ -22,10 +14,9 @@ namespace ResoniteUnityExporter.Converters
                 ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending mesh " + sharedMesh.name;
                 yield return null;
                 OutputHolder<object> meshOutputHolder = new OutputHolder<object>();
-                var meshEn = hierarchy.SendOrGetMesh(sharedMesh, new string[] { }, meshOutputHolder);
-                while (meshEn.MoveNext())
+                foreach (var meshEn in hierarchy.SendOrGetMesh(sharedMesh, new string[] { }, meshOutputHolder))
                 {
-                    yield return null;
+                    yield return meshEn;
                 }
                 RefID_U2Res meshRefId = (RefID_U2Res)meshOutputHolder.value;
 
@@ -36,10 +27,9 @@ namespace ResoniteUnityExporter.Converters
                     ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending material " + mat.name;
                     yield return null;
                     OutputHolder<object> materialOutputHolder = new OutputHolder<object>();
-                    var materialEn = hierarchy.SendOrGetMaterial(mat, materialOutputHolder);
-                    while (materialEn.MoveNext())
+                    foreach (var materialEn in hierarchy.SendOrGetMaterial(mat, materialOutputHolder))
                     {
-                        yield return null;
+                        yield return materialEn;
                     }
                     materialRefIds[i++] = (RefID_U2Res)materialOutputHolder.value;
                     yield return null;
@@ -54,10 +44,9 @@ namespace ResoniteUnityExporter.Converters
 
                 ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Creating skinned mesh renderer";
                 yield return null;
-                var e = hierarchy.Call<RefID_U2Res, MeshRenderer_U2Res>("ImportMeshRenderer", meshRendererData, output);
-                while (e.MoveNext())
+                foreach (var e in hierarchy.Call<RefID_U2Res, MeshRenderer_U2Res>("ImportMeshRenderer", meshRendererData, output))
                 {
-                    yield return null;
+                    yield return e;
                 }
             }
         }
