@@ -24,15 +24,25 @@ namespace ResoniteUnityExporter.Converters
                 int i = 0;
                 foreach (UnityEngine.Material mat in renderer.sharedMaterials)
                 {
-                    ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending material " + mat.name;
-                    yield return null;
-                    OutputHolder<object> materialOutputHolder = new OutputHolder<object>();
-                    foreach (var materialEn in hierarchy.SendOrGetMaterial(mat, materialOutputHolder))
+                    if (mat != null)
                     {
-                        yield return materialEn;
+                        ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending material " + mat.name;
+                        yield return null;
+                        OutputHolder<object> materialOutputHolder = new OutputHolder<object>();
+                        foreach (var materialEn in hierarchy.SendOrGetMaterial(mat, materialOutputHolder))
+                        {
+                            yield return materialEn;
+                        }
+                        materialRefIds[i++] = (RefID_U2Res)materialOutputHolder.value;
+                        yield return null;
                     }
-                    materialRefIds[i++] = (RefID_U2Res)materialOutputHolder.value;
-                    yield return null;
+                    else
+                    {
+                        materialRefIds[i++] = new RefID_U2Res()
+                        {
+                            id = 0
+                        };
+                    }
                 }
 
                 MeshRenderer_U2Res meshRendererData = new MeshRenderer_U2Res()

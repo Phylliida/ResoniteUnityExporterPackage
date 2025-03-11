@@ -1,6 +1,6 @@
 {
   "name": "io.github.phylliida.resonite-unity-exporter",
-  "version": "0.1.5",
+  "version": "0.1.5.1",
   "description": "Export Avatars or Worlds from Unity into Resonite",
   "displayName": "Resonite Unity Exporter",
   "unity": "2022.3",

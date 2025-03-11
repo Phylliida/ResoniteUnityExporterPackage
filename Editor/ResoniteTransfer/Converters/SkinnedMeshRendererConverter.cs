@@ -54,15 +54,25 @@ namespace ResoniteUnityExporter.Converters
                 int i = 0;
                 foreach (UnityEngine.Material mat in renderer.sharedMaterials)
                 {
-                    ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending material " + mat.name;
-                    yield return null;
-                    OutputHolder<object> materialOutputHolder = new OutputHolder<object>();
-                    foreach (var matEn in hierarchy.SendOrGetMaterial(mat, materialOutputHolder))
+                    if (mat != null)
                     {
-                        yield return matEn;
+                        ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending material " + mat.name;
+                        yield return null;
+                        OutputHolder<object> materialOutputHolder = new OutputHolder<object>();
+                        foreach (var matEn in hierarchy.SendOrGetMaterial(mat, materialOutputHolder))
+                        {
+                            yield return matEn;
+                        }
+                        materialRefIds[i++] = (RefID_U2Res)materialOutputHolder.value;
+                        yield return null;
                     }
-                    materialRefIds[i++] = (RefID_U2Res)materialOutputHolder.value;
-                    yield return null;
+                    else
+                    {
+                        materialRefIds[i++] = new RefID_U2Res()
+                        {
+                            id = 0
+                        };
+                    }
                 }
 
                 foreach (Transform bone in rendererBones)
