@@ -261,7 +261,7 @@ namespace ResoniteUnityExporter
                 // add lod group references
                 foreach (LOD lod in lodGroup.GetLODs())
                 {
-                    foreach (MeshRenderer renderer in lod.renderers)
+                    foreach (Renderer renderer in lod.renderers)
                     {
                         if (renderer != null)
                         {
