@@ -59,6 +59,11 @@ namespace ResoniteUnityExporter
             materialData.intNames = intNames;
             materialData.intValues = intValues.ToArray();
 
+            string[] keywords = material.shaderKeywords;
+            bool[] keywordValues = keywords.Select(keyword => material.IsKeywordEnabled(keyword)).ToArray();
+            materialData.keywords = keywords;
+            materialData.keywordValues = keywordValues;
+
             Dictionary<int, string> materialMappings = hierarchyLookup.transferManager.settings.materialMappings;
             if (!materialMappings.TryGetValue(material.GetInstanceID(), out materialData.materialName))
             {
