@@ -19,6 +19,8 @@ namespace ResoniteUnityExporter.Converters
             public float weight;
             public Transform transform;
         }
+
+#if RUE_HAS_VRCSDK
         public static void GetBonesFromChildren(Transform curChild, List<BoneInfo> bones, float weight, int depth, VRCPhysBone.MultiChildType multiChildType)
         {
 
@@ -47,8 +49,6 @@ namespace ResoniteUnityExporter.Converters
                 }
             }
         }
-
-#if RUE_HAS_VRCSDK
         public static BoneInfo[] GetBones(VRCPhysBone physBone, GameObject obj, out int depth)
         {
             if (physBone.bones == null || physBone.bones.Count == 0)
