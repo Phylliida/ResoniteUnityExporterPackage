@@ -9,6 +9,7 @@ namespace ResoniteUnityExporter.Converters
 {
     public class PhysBoneColliderConverter
     {
+#if RUE_HAS_VRCSDK
         public static IEnumerable<object> ConvertPhysBoneCollider(VRCPhysBoneCollider physBoneCollider, GameObject obj, RefID_U2Res objRefID, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
         {
             DynamicBoneCollider_U2Res boneChainColliderData = new DynamicBoneCollider_U2Res()
@@ -40,5 +41,6 @@ namespace ResoniteUnityExporter.Converters
                 yield return e;
             }
         }
+#endif
     }
 }
