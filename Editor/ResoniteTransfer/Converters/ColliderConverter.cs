@@ -89,7 +89,7 @@ namespace ResoniteUnityExporter.Converters
                 // if this is processed before that skinned mesh so it gets empty bones
                 // but having mesh collider for skinned mesh is cursed don't do that
                 // so its probably ok
-                foreach (var meshEn in hierarchy.SendOrGetMesh(meshCollider.sharedMesh, new string[] { }, meshAssetRefIDHolder))
+                foreach (var meshEn in hierarchy.SendOrGetMesh(meshCollider.sharedMesh, new string[] { }, Matrix4x4.identity, meshAssetRefIDHolder))
                 {
                     yield return meshEn;   
                 }

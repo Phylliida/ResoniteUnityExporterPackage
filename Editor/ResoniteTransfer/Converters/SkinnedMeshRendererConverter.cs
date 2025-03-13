@@ -44,7 +44,7 @@ namespace ResoniteUnityExporter.Converters
                 ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending mesh " + renderer.sharedMesh.name;
                 yield return null;
                 OutputHolder<object> meshOutputHolder = new OutputHolder<object>();
-                foreach (var meshEn in hierarchy.SendOrGetMesh(renderer.sharedMesh, boneNames, meshOutputHolder))
+                foreach (var meshEn in hierarchy.SendOrGetMesh(renderer.sharedMesh, boneNames, Matrix4x4.identity, meshOutputHolder))
                 {
                     yield return meshEn;
                 }

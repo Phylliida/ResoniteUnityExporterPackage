@@ -108,7 +108,7 @@ namespace ResoniteUnityExporter
             return SerializationUtils.ConvertArray<OutType, InType>(subsetData);
         }
 
-        public static ResoniteUnityExporterShared.StaticMesh_U2Res ConvertMesh(UnityEngine.Mesh unityMesh, string[] boneNames, int subMeshStartIndex, int subMeshEndIndexExclusive, float scaleFactor)
+        public static ResoniteUnityExporterShared.StaticMesh_U2Res ConvertMesh(UnityEngine.Mesh unityMesh, string[] boneNames, Matrix4x4 submeshTransform, int subMeshStartIndex, int subMeshEndIndexExclusive, float scaleFactor)
         {
             // todo: provide option to ignore bones and ignore vertex colors
             StaticMesh_U2Res meshx = new StaticMesh_U2Res();
@@ -140,7 +140,12 @@ namespace ResoniteUnityExporter
             {
                 if (convertSubmesh)
                 {
-                    vertices = ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(unityMesh.vertices, submeshesVertexSubset);
+                    UnityEngine.Vector3[] unityVerts = ConvertSubset<UnityEngine.Vector3, UnityEngine.Vector3>(unityMesh.vertices, submeshesVertexSubset);
+                    for (int i = 0; i < unityVerts.Length; i++)
+                    {
+                        unityVerts[i] = submeshTransform.MultiplyPoint(unityVerts[i]);
+                    }
+                    vertices = SerializationUtils.ConvertArray<Float3_U2Res, Vector3>(unityVerts);
                 }
                 else
                 {
@@ -173,7 +178,12 @@ namespace ResoniteUnityExporter
                 {
                     if (convertSubmesh)
                     {
-                        normals = ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(unityMesh.normals, submeshesVertexSubset);
+                        Vector3[] unityNormals = ConvertSubset<Vector3, UnityEngine.Vector3>(unityMesh.normals, submeshesVertexSubset);
+                        for (int i = 0; i < unityNormals.Length; i++)
+                        {
+                            unityNormals[i] = submeshTransform.MultiplyVector(unityNormals[i]);
+                        }
+                        normals = SerializationUtils.ConvertArray<Float3_U2Res, Vector3>(unityNormals);
                     }
                     else
                     {
@@ -185,7 +195,19 @@ namespace ResoniteUnityExporter
                 {
                     if (convertSubmesh)
                     {
-                        tangents = ConvertSubset<Float4_U2Res, UnityEngine.Vector4>(unityMesh.tangents, submeshesVertexSubset);
+                        Vector4[] unityTangents = ConvertSubset<Vector4, UnityEngine.Vector4>(unityMesh.tangents, submeshesVertexSubset);
+                        for (int i = 0; i < unityTangents.Length; i++)
+                        {
+                            // first three are the vector which is what matters
+                            Vector3 result = submeshTransform.MultiplyVector(
+                                new Vector3(unityTangents[i].x,
+                                unityTangents[i].y,
+                                unityTangents[i].z)).normalized;
+                            unityTangents[i].x = result.x;
+                            unityTangents[i].y = result.y;
+                            unityTangents[i].z = result.z;
+                        }
+                        tangents = SerializationUtils.ConvertArray<Float4_U2Res, Vector4>(unityTangents);
                     }
                     else
                     {
@@ -344,7 +366,7 @@ namespace ResoniteUnityExporter
 
             using (Timer _ = new Timer("Blendshape data"))
             {
-
+                // these only exist for skinned mesh so we don't need to worry about submeshTransform stuff
                 BlendShape_U2Res[] blendShapes = new BlendShape_U2Res[unityMesh.blendShapeCount];
 
                 for (int blendShapeI = 0; blendShapeI < unityMesh.blendShapeCount; blendShapeI++)
@@ -398,7 +420,7 @@ namespace ResoniteUnityExporter
                         }
 
                         frame.positions = frameVertices;
-
+                        
                         if (normals != null)
                         {
                             Float3_U2Res[] frameNormals = convertSubmesh
@@ -547,9 +569,9 @@ namespace ResoniteUnityExporter
 
         // resonite wants things scaled up for ik to work correctly, so do that
         public static float FIXED_SCALE_FACTOR = 100.0f;
-        public static IEnumerable<object> SendMeshToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Mesh mesh, string[] boneNames, int subMeshStartIndex, int subMeshEndIndex, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
+        public static IEnumerable<object> SendMeshToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Mesh mesh, string[] boneNames, Matrix4x4 submeshTransform, int subMeshStartIndex, int subMeshEndIndex, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
         {
-            StaticMesh_U2Res convertedMesh = ConvertMesh(mesh, boneNames.ToArray(), subMeshStartIndex, subMeshEndIndex, FIXED_SCALE_FACTOR);
+            StaticMesh_U2Res convertedMesh = ConvertMesh(mesh, boneNames.ToArray(), submeshTransform, subMeshStartIndex, subMeshEndIndex, FIXED_SCALE_FACTOR);
             convertedMesh.rootAssetsSlot = hierarchyLookup.rootAssetsSlot;
 
 

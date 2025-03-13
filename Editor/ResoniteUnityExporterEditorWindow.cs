@@ -18,14 +18,16 @@ using VRC.SDK3.Avatars.Components;
 using VRC.Core;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDK3.Dynamics.Constraint.Components;
+using System.Reflection;
 #endif
 
 
 
-namespace ResoniteUnityExporter {
-   
+namespace ResoniteUnityExporter
+{
+
     public class ResoniteUnityExporterEditorWindow : EditorWindow
-	{
+    {
         bool ranAnyRuns = false;
         bool setupAvatarCreator = true;
         bool finalizeAvatarCreator = true;
@@ -103,9 +105,9 @@ namespace ResoniteUnityExporter {
                 return;
             }
 
-            for(int i = CoroutinesInProgress.Count-1; i >= 0; i--)
+            for (int i = CoroutinesInProgress.Count - 1; i >= 0; i--)
             {
-                if(!CoroutinesInProgress[i].MoveNext())
+                if (!CoroutinesInProgress[i].MoveNext())
                 {
                     CoroutinesInProgress.RemoveAt(i);
                 }
@@ -118,11 +120,11 @@ namespace ResoniteUnityExporter {
         static int windowWidth = 560;
         static int windowHeight = 680;
 
-		// Add menu item named "My Custom Window" to the Window menu
-		[MenuItem("ResoniteUnityExporter/Open Resonite Unity Exporter")]
-		public static void ShowWindow()
-		{
-			// Get existing open window or if none, make a new one
+        // Add menu item named "My Custom Window" to the Window menu
+        [MenuItem("ResoniteUnityExporter/Open Resonite Unity Exporter")]
+        public static void ShowWindow()
+        {
+            // Get existing open window or if none, make a new one
             var window = EditorWindow.GetWindow(typeof(ResoniteUnityExporterEditorWindow));
             window.minSize = new UnityEngine.Vector2(windowWidth, windowHeight); // Minimum size
             window.maxSize = new UnityEngine.Vector2(windowWidth, windowHeight); // Maximum size (same as min for fixed size)
@@ -146,16 +148,16 @@ namespace ResoniteUnityExporter {
         }
         public void OnBeforeAssemblyReload()
         {
-			// on script reload we need to remember to Dispose it manually
-			// otherwise unity will hang
-			if (bridgeClient != null)
-			{
+            // on script reload we need to remember to Dispose it manually
+            // otherwise unity will hang
+            if (bridgeClient != null)
+            {
                 serverInfo = LOADING_SERVER_INFO;
                 bridgeClient.Dispose();
-				
-				bridgeClient = null;
+
+                bridgeClient = null;
             }
-            
+
             // stop all running coroutines
             CoroutinesInProgress.Clear();
         }
@@ -202,7 +204,7 @@ namespace ResoniteUnityExporter {
                 OutputHolder<object> outputInfo = new ResoniteUnityExporter.OutputHolder<object>();
                 var en = HierarchyLookup.Call<ServerInfo_U2Res, int>(bridgeClient, "GetServerInfo", 0, outputInfo);
                 var exceptCatcher = new ExceptionSafeIterator(en);
-                while(exceptCatcher.MoveNext())
+                while (exceptCatcher.MoveNext())
                 {
                     yield return exceptCatcher.Current;
                 }
@@ -251,7 +253,7 @@ namespace ResoniteUnityExporter {
             Texture2D screenshot = new Texture2D(width, height, TextureFormat.RGB24, false);
             screenshot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
             screenshot.Apply();
-        
+
             // Restore camera
             sceneView.camera.transform.position = originalPos;
             sceneView.camera.transform.rotation = originalRot;
@@ -275,7 +277,7 @@ namespace ResoniteUnityExporter {
                 return CaptureFromPosition(
                     headPosition,
                     headObject == null ? Quaternion.identity : headObject.transform.rotation,
-                    headObject == null ? new UnityEngine.Vector3(1,1,1) : headObject.transform.lossyScale, 
+                    headObject == null ? new UnityEngine.Vector3(1, 1, 1) : headObject.transform.lossyScale,
                     nearClip,
                     width, height);
             }
@@ -283,16 +285,16 @@ namespace ResoniteUnityExporter {
             else
             {
                 return CaptureFromPosition(
-                    new UnityEngine.Vector3(0,0,0),
+                    new UnityEngine.Vector3(0, 0, 0),
                     UnityEngine.Quaternion.identity,
-                    new UnityEngine.Vector3(1,1,1),
+                    new UnityEngine.Vector3(1, 1, 1),
                     nearClip,
                     width, height);
             }
         }
 
         void RegisterConverters(ResoniteTransferManager transferManager, bool sendColliders, bool sendLights)
-		{
+        {
             // mesh renderers
             transferManager.RegisterConverter<SkinnedMeshRenderer>(SkinnedMeshRendererConverter.ConvertSkinnedMeshRenderer);
             transferManager.RegisterConverter<MeshRenderer>(MeshRendererConverter.ConvertMeshRenderer);
@@ -540,7 +542,7 @@ namespace ResoniteUnityExporter {
         }
         void DrawViewPreviewAndSubmit()
         {
-            // include this in the submit page so they know to deal with it
+            // include this in the fsubmit page so they know to deal with it
             if (sendingAvatar)
             {
                 DrawViewPreview();
@@ -555,7 +557,7 @@ namespace ResoniteUnityExporter {
                 bridgeClient = new ResoniteBridgeClient(channelName, serverFolder, (string message) => { UnityEngine.Debug.Log(message); });
             }
             */
-            
+
 
 
             EditorGUILayout.Space(5);
@@ -578,10 +580,10 @@ namespace ResoniteUnityExporter {
             }
 #endif
 
-            EditorGUI.BeginDisabledGroup(!ready || 
-                (debugCoroutine && CoroutinesInProgress.Count != 0) || 
-                !serverInfo.allowedToCreateInWorld 
-                || multipleAvatarsSelected 
+            EditorGUI.BeginDisabledGroup(!ready ||
+                (debugCoroutine && CoroutinesInProgress.Count != 0) ||
+                !serverInfo.allowedToCreateInWorld
+                || multipleAvatarsSelected
                 || Application.isPlaying
                 || !hasAvatarDescriptor);
 
@@ -604,7 +606,7 @@ namespace ResoniteUnityExporter {
                 ResoniteTransferManager transferManager = new ResoniteTransferManager();
                 RegisterConverters(transferManager, sendColliders, sendLights);
                 DebugProgressString = "";
-                
+
                 System.Collections.IEnumerable coroutine = transferManager.ConvertObjectAndChildren(exportSlotName, parentObject, bridgeClient, new ResoniteTransferSettings()
                 {
                     setupAvatarCreator = setupAvatarCreator,
@@ -653,11 +655,11 @@ namespace ResoniteUnityExporter {
                 {
                     // do a slow weighted average so it's not so jumpy
                     double weighting = 0.995;
-                    CurEstimatedMillisForEach = weighting * CurEstimatedMillisForEach + (1-weighting) * estimatedMillisForEach;
+                    CurEstimatedMillisForEach = weighting * CurEstimatedMillisForEach + (1 - weighting) * estimatedMillisForEach;
                 }
                 double totalEstimatedMillis = CurEstimatedMillisForEach * TotalTransferObjectCount;
                 double totalEstimatedMillisLeft = Math.Max(0, totalEstimatedMillis - elapsedTimeSending.ElapsedMilliseconds);
-                
+
                 estimatedTimeLeftStr = FormatTimeSpan(TimeSpan.FromMilliseconds(totalEstimatedMillisLeft));
             }
 
@@ -737,7 +739,7 @@ namespace ResoniteUnityExporter {
             if (shaderDefaults.TryGetValue(shaderName, out string shaderDefault))
             {
                 return shaderDefault;
-            }  
+            }
             else
             {
                 return MaterialNames_U2Res.PBS_METALLIC_MAT;
@@ -791,7 +793,8 @@ namespace ResoniteUnityExporter {
 
             // Content inside scroll view
             string[] resoniteMaterialLabels = resoniteMaterials.ToArray();
-            foreach (string shaderName in shaderNames) {
+            foreach (string shaderName in shaderNames)
+            {
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField(shaderName, GUILayout.Width(200));
                 EditorGUILayout.LabelField("-->", GUILayout.Width(30));
@@ -827,7 +830,7 @@ namespace ResoniteUnityExporter {
             if (bridgeClient == null)
             {
                 serverInfo = LOADING_SERVER_INFO;
-                bridgeClient = new ResoniteBridgeClient(channelName, serverFolder, (string message) => { 
+                bridgeClient = new ResoniteBridgeClient(channelName, serverFolder, (string message) => {
                     // uncomment this for debugging info about connections
                     //Debug.Log(message);
                 });
@@ -857,7 +860,7 @@ namespace ResoniteUnityExporter {
             DrawTitle();
 
             DrawConnectedStatus();
-            
+
             exportSlotName = EditorGUILayout.TextField("Avatar/World Name", exportSlotName);
             EditorGUILayout.BeginHorizontal();
             parentObject = (Transform)EditorGUILayout.ObjectField(

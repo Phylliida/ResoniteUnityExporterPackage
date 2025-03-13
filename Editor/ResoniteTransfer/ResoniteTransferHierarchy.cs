@@ -174,9 +174,9 @@ namespace ResoniteUnityExporter
             {
                 output.value = asyncTask.Result;
             }
-        } 
+        }
 
-        public IEnumerable<object> SendOrGetMesh(UnityEngine.Mesh mesh, string[] boneNames, OutputHolder<object> output, int subMeshStartIndex=-1, int subMeshEndIndexExclusive=-1)
+        public IEnumerable<object> SendOrGetMesh(UnityEngine.Mesh mesh, string[] boneNames, Matrix4x4 submeshTransform, OutputHolder<object> output, int subMeshStartIndex=-1, int subMeshEndIndexExclusive=-1)
         {
             string subMeshId = "";
             if (subMeshStartIndex != -1 && subMeshEndIndexExclusive != -1)
@@ -185,7 +185,7 @@ namespace ResoniteUnityExporter
             }
             foreach (var en in CreateAssetIfNotExist(mesh.GetInstanceID().ToString() + subMeshId, () =>
             {
-                return ResoniteTransferMesh.SendMeshToResonite(this, mesh, boneNames, subMeshStartIndex, subMeshEndIndexExclusive, bridgeClient, output);
+                return ResoniteTransferMesh.SendMeshToResonite(this, mesh, boneNames, submeshTransform, subMeshStartIndex, subMeshEndIndexExclusive, bridgeClient, output);
             }, output))
             {
                 yield return en;

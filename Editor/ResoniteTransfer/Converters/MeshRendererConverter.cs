@@ -15,12 +15,22 @@ namespace ResoniteUnityExporter.Converters
                 yield return null;
                 OutputHolder<object> meshOutputHolder = new OutputHolder<object>();
                 RefID_U2Res meshRefId;
-                if (renderer.subMeshStartIndex != 0 && renderer.sharedMaterials != null)
+                // static batching handling
+                // just grab the subset
+                if (renderer.isPartOfStaticBatch && renderer.sharedMaterials != null)
                 {
                     // extract the relevant submesh, when static batching
                     int startIndex = renderer.subMeshStartIndex;
                     int endIndex = renderer.subMeshStartIndex + renderer.sharedMaterials.Length;
+                    // also need to transform the vertices so that this object is at 0,0,0 and not rotated
+                    // simplest way to do that is
+                    // make empty object a 0,0,0
+                    // parent to this
+                    // read it's local transform and rotation
+                    // we can do that by just globalToLocal
+
                     foreach (var meshEn in hierarchy.SendOrGetMesh(sharedMesh, new string[] { },
+                        renderer.transform.worldToLocalMatrix,
                         meshOutputHolder,
                         subMeshStartIndex: startIndex,
                         subMeshEndIndexExclusive: endIndex))
@@ -31,7 +41,7 @@ namespace ResoniteUnityExporter.Converters
                 }
                 else
                 {
-                    foreach (var meshEn in hierarchy.SendOrGetMesh(sharedMesh, new string[] { }, meshOutputHolder))
+                    foreach (var meshEn in hierarchy.SendOrGetMesh(sharedMesh, new string[] { }, Matrix4x4.identity, meshOutputHolder))
                     {
                         yield return meshEn;
                     }
