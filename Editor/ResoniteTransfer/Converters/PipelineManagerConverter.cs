@@ -84,6 +84,6 @@ namespace ResoniteUnityExporter.Converters
                 yield return null;              
             }
         }
-    }
 #endif
+    }
 }
