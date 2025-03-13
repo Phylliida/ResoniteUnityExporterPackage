@@ -176,11 +176,16 @@ namespace ResoniteUnityExporter
             }
         } 
 
-        public IEnumerable<object> SendOrGetMesh(UnityEngine.Mesh mesh, string[] boneNames, OutputHolder<object> output)
+        public IEnumerable<object> SendOrGetMesh(UnityEngine.Mesh mesh, string[] boneNames, OutputHolder<object> output, int subMeshStartIndex=-1, int subMeshEndIndexExclusive=-1)
         {
-            foreach (var en in CreateAssetIfNotExist(mesh.GetInstanceID().ToString(), () =>
+            string subMeshId = "";
+            if (subMeshStartIndex != -1 && subMeshEndIndexExclusive != -1)
             {
-                return ResoniteTransferMesh.SendMeshToResonite(this, mesh, boneNames, bridgeClient, output);
+                subMeshId = "submesh:" + subMeshStartIndex + " " + subMeshEndIndexExclusive;
+            }
+            foreach (var en in CreateAssetIfNotExist(mesh.GetInstanceID().ToString() + subMeshId, () =>
+            {
+                return ResoniteTransferMesh.SendMeshToResonite(this, mesh, boneNames, subMeshStartIndex, subMeshEndIndexExclusive, bridgeClient, output);
             }, output))
             {
                 yield return en;

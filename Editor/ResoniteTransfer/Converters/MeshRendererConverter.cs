@@ -14,11 +14,29 @@ namespace ResoniteUnityExporter.Converters
                 ResoniteUnityExporterEditorWindow.DebugProgressStringDetail = "Sending mesh " + sharedMesh.name;
                 yield return null;
                 OutputHolder<object> meshOutputHolder = new OutputHolder<object>();
-                foreach (var meshEn in hierarchy.SendOrGetMesh(sharedMesh, new string[] { }, meshOutputHolder))
+                RefID_U2Res meshRefId;
+                if (renderer.subMeshStartIndex != 0 && renderer.sharedMaterials != null)
                 {
-                    yield return meshEn;
+                    // extract the relevant submesh, when static batching
+                    int startIndex = renderer.subMeshStartIndex;
+                    int endIndex = renderer.subMeshStartIndex + renderer.sharedMaterials.Length;
+                    foreach (var meshEn in hierarchy.SendOrGetMesh(sharedMesh, new string[] { },
+                        meshOutputHolder,
+                        subMeshStartIndex: startIndex,
+                        subMeshEndIndexExclusive: endIndex))
+                    {
+                        yield return meshEn;
+                    }
+                    meshRefId = (RefID_U2Res)meshOutputHolder.value;
                 }
-                RefID_U2Res meshRefId = (RefID_U2Res)meshOutputHolder.value;
+                else
+                {
+                    foreach (var meshEn in hierarchy.SendOrGetMesh(sharedMesh, new string[] { }, meshOutputHolder))
+                    {
+                        yield return meshEn;
+                    }
+                    meshRefId = (RefID_U2Res)meshOutputHolder.value;
+                }
 
                 RefID_U2Res[] materialRefIds = new RefID_U2Res[renderer.sharedMaterials.Length];
                 int i = 0;

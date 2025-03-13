@@ -4,6 +4,7 @@ using ResoniteUnityExporterShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using static ResoniteUnityExporter.ResoniteTransferUtils;
 
@@ -44,7 +45,70 @@ namespace ResoniteUnityExporter
             actualTexCoordIndices = texCoordIndices.ToArray();
             return texCoordDimensions.ToArray();
         }
-        public static ResoniteUnityExporterShared.StaticMesh_U2Res ConvertMesh(UnityEngine.Mesh unityMesh, string[] boneNames, float scaleFactor)
+
+        public static void ToByteArray(object source, int sourceOffsetInBytes, byte[] destination, int offsetInDestinationInBytes, int lenOfSourceInBytes)
+        {
+            if (lenOfSourceInBytes <= 0)
+            {
+                return;
+            }
+
+            GCHandle gCHandle = GCHandle.Alloc(source, GCHandleType.Pinned);
+            try
+            {
+                Marshal.Copy(gCHandle.AddrOfPinnedObject() + sourceOffsetInBytes, destination, offsetInDestinationInBytes, lenOfSourceInBytes);
+            }
+            finally
+            {
+                if (gCHandle.IsAllocated)
+                {
+                    gCHandle.Free();
+                }
+            }
+        }
+
+        public static int[] GetSubMeshesVertexSubset(UnityEngine.Mesh mesh, int subMeshStartIndex, int subMeshEndExclusive, out int[] indexMap, out bool[] whichVerticesPresent)
+        {
+            if (mesh.vertices.Length == 0)
+            {
+                indexMap = new int[0];
+                whichVerticesPresent = new bool[0];
+                return new int[0];
+            }
+            // start as false
+            whichVerticesPresent = new bool[mesh.vertices.Length];
+            for (int subMeshI = subMeshStartIndex; subMeshI < subMeshEndExclusive; subMeshI++)
+            {
+                int[] indices = mesh.GetIndices(subMeshI);
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    whichVerticesPresent[indices[i]] = true;
+                }
+            }
+            List<int> presentVertices = new List<int>();
+            indexMap = new int[mesh.vertices.Length];
+            for (int i = 0; i < whichVerticesPresent.Length; i++)
+            {
+                if (whichVerticesPresent[i])
+                {
+                    indexMap[i] = presentVertices.Count;
+                    presentVertices.Add(i);
+                }
+            }
+            return presentVertices.ToArray();
+        }
+
+        public static OutType[] ConvertSubset<OutType, InType>(InType[] data, int[] subset) where OutType : struct where InType : struct
+        {
+            InType[] subsetData = new InType[subset.Length];
+            for (int i = 0; i < subset.Length; i++)
+            {
+                subsetData[i] = data[subset[i]];
+            }
+            return SerializationUtils.ConvertArray<OutType, InType>(subsetData);
+        }
+
+        public static ResoniteUnityExporterShared.StaticMesh_U2Res ConvertMesh(UnityEngine.Mesh unityMesh, string[] boneNames, int subMeshStartIndex, int subMeshEndIndexExclusive, float scaleFactor)
         {
             // todo: provide option to ignore bones and ignore vertex colors
             StaticMesh_U2Res meshx = new StaticMesh_U2Res();
@@ -60,9 +124,28 @@ namespace ResoniteUnityExporter
             //ModelImporter modelImporter = AssetImporter.GetAtPath(path) as ModelImporter;
             // unapply global scale since we will reapply global scaling on import
 
+            bool convertSubmesh = subMeshStartIndex != -1 &&
+                subMeshEndIndexExclusive != -1 &&
+                unityMesh.subMeshCount >= subMeshEndIndexExclusive;
+
+            int[] submeshesVertexSubset = null;
+            int[] submeshesIndexMap = null;
+            bool[] whichVerticesPresent = null;
+            if (convertSubmesh)
+            {
+                submeshesVertexSubset = GetSubMeshesVertexSubset(unityMesh, subMeshStartIndex, subMeshEndIndexExclusive, out submeshesIndexMap, out whichVerticesPresent);
+            }
+
             using (Timer _ = new Timer("Mesh data"))
             {
-                vertices = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(unityMesh.vertices);
+                if (convertSubmesh)
+                {
+                    vertices = ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(unityMesh.vertices, submeshesVertexSubset);
+                }
+                else
+                {
+                    vertices = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(unityMesh.vertices);
+                }
                 for (int i = 0; i < vertices.Length; i++)
                 {
                     vertices[i].x *= scaleFactor;
@@ -76,17 +159,38 @@ namespace ResoniteUnityExporter
                     // important to use .colors instead of .colors32 on the unityMesh
                     // because colors32 stores each r,g,b,a as a byte instead of a float
                     // so this conversion would not work without manually fixing
-                    meshx.colors = SerializationUtils.ConvertArray<Float4_U2Res, UnityEngine.Color>(unityMesh.colors);
+                    if (convertSubmesh)
+                    {
+                        meshx.colors = ConvertSubset<Float4_U2Res, UnityEngine.Color>(unityMesh.colors, submeshesVertexSubset);
+                    }
+                    else
+                    {
+                        meshx.colors = SerializationUtils.ConvertArray<Float4_U2Res, UnityEngine.Color>(unityMesh.colors);
+                    }
                 }
 
                 if (NotEmpty(unityMesh.normals))
                 {
-                    normals = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(unityMesh.normals);
+                    if (convertSubmesh)
+                    {
+                        normals = ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(unityMesh.normals, submeshesVertexSubset);
+                    }
+                    else
+                    {
+                        normals = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(unityMesh.normals);
+                    }
                     meshx.normals = normals;
                 }
                 if (NotEmpty(unityMesh.tangents))
                 {
-                    tangents = SerializationUtils.ConvertArray<Float4_U2Res, UnityEngine.Vector4>(unityMesh.tangents);
+                    if (convertSubmesh)
+                    {
+                        tangents = ConvertSubset<Float4_U2Res, UnityEngine.Vector4>(unityMesh.tangents, submeshesVertexSubset);
+                    }
+                    else
+                    {
+                        tangents = SerializationUtils.ConvertArray<Float4_U2Res, UnityEngine.Vector4>(unityMesh.tangents);
+                    }
                     meshx.tangents = tangents;
                 }
             }
@@ -110,19 +214,40 @@ namespace ResoniteUnityExporter
                     {
                         List<UnityEngine.Vector2> uvs = new List<UnityEngine.Vector2>(unityMesh.vertexCount);
                         unityMesh.GetUVs(uvIndex, uvs);
-                        uvArrayI.uv_2D = SerializationUtils.ConvertArray<Float2_U2Res, UnityEngine.Vector2>(uvs.ToArray());
+                        if (convertSubmesh)
+                        {
+                            uvArrayI.uv_2D = ConvertSubset<Float2_U2Res, UnityEngine.Vector2>(uvs.ToArray(), submeshesVertexSubset);
+                        }
+                        else
+                        {
+                            uvArrayI.uv_2D = SerializationUtils.ConvertArray<Float2_U2Res, UnityEngine.Vector2>(uvs.ToArray());
+                        }
                     }
                     else if (curDimension == 3)
                     {
                         List<UnityEngine.Vector3> uvs = new List<UnityEngine.Vector3>(unityMesh.vertexCount);
                         unityMesh.GetUVs(uvIndex, uvs);
-                        uvArrayI.uv_3D = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(uvs.ToArray());
+                        if (convertSubmesh)
+                        {
+                            uvArrayI.uv_3D = ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(uvs.ToArray(), submeshesVertexSubset);
+                        }
+                        else
+                        {
+                            uvArrayI.uv_3D = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(uvs.ToArray());
+                        }
                     }
                     else if (curDimension == 4)
                     {
                         List<UnityEngine.Vector4> uvs = new List<UnityEngine.Vector4>(unityMesh.vertexCount);
                         unityMesh.GetUVs(uvIndex, uvs);
-                        uvArrayI.uv_4D = SerializationUtils.ConvertArray<Float4_U2Res, UnityEngine.Vector4>(uvs.ToArray());
+                        if (convertSubmesh)
+                        {
+                            uvArrayI.uv_4D = ConvertSubset<Float4_U2Res, UnityEngine.Vector4>(uvs.ToArray(), submeshesVertexSubset);
+                        }
+                        else
+                        {
+                            uvArrayI.uv_4D = SerializationUtils.ConvertArray<Float4_U2Res, UnityEngine.Vector4>(uvs.ToArray());
+                        }
                     }
                     uvArrayI.dimension = curDimension;
                     allUvs[uvIndex] = uvArrayI;
@@ -132,10 +257,16 @@ namespace ResoniteUnityExporter
 
             using (Timer _ = new Timer("Submesh data"))
             {
-
+                int subMeshStart = subMeshStartIndex >= 0 
+                    ? subMeshStartIndex
+                    : 0;
+                int subMeshEndExclusive = subMeshEndIndexExclusive >= 0
+                    ? subMeshEndIndexExclusive
+                    : unityMesh.subMeshCount;
                 // submesh (index buffers)
-                TriSubmesh_U2Res[] submeshes = new TriSubmesh_U2Res[unityMesh.subMeshCount];
-                for (int subMeshI = 0; subMeshI < unityMesh.subMeshCount; subMeshI++)
+                TriSubmesh_U2Res[] submeshes = new TriSubmesh_U2Res[subMeshEndExclusive-subMeshStart];
+                int indexInSubmeshesArray = 0;
+                for (int subMeshI = subMeshStart; subMeshI < subMeshEndExclusive; subMeshI++)
                 {
                     UnityEngine.Rendering.SubMeshDescriptor subMeshDescriptor = unityMesh.GetSubMesh(subMeshI);
                     TriSubmesh_U2Res submesh = new TriSubmesh_U2Res();
@@ -195,8 +326,18 @@ namespace ResoniteUnityExporter
                         }
                         indicies = triIndicies;
                     }
+                    if (convertSubmesh)
+                    {
+                        // need to renamp if we are only using subsets of indicies
+                        int[] correctedIndicies = new int[indicies.Length];
+                        for (int i = 0; i < indicies.Length; i++)
+                        {
+                            correctedIndicies[i] = submeshesIndexMap[indicies[i]];
+                        }
+                        indicies = correctedIndicies;
+                    }
                     submesh.indicies = indicies;
-                    submeshes[subMeshI] = submesh;
+                    submeshes[indexInSubmeshesArray++] = submesh;
                 }
                 meshx.submeshes = submeshes; // hhf
             }
@@ -238,8 +379,9 @@ namespace ResoniteUnityExporter
                             deltaNormals,
                             deltaTangents
                         );
-
-                        Float3_U2Res[] frameVertices = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(deltaVertices);
+                        Float3_U2Res[] frameVertices = convertSubmesh
+                            ? ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(deltaVertices, submeshesVertexSubset)
+                            : SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(deltaVertices);
                         /*
                         for (int i = 0; i < numVertices; i++)
                         {
@@ -259,7 +401,9 @@ namespace ResoniteUnityExporter
 
                         if (normals != null)
                         {
-                            Float3_U2Res[] frameNormals = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(deltaNormals);
+                            Float3_U2Res[] frameNormals = convertSubmesh
+                                ? ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(deltaNormals, submeshesVertexSubset)
+                                : SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(deltaNormals);
                             for (int i = 0; i < numVertices; i++)
                             {
                                 // idk if this is right? but it doesn't go all black or dissapear anymore... maybe i need to normalize?
@@ -272,7 +416,9 @@ namespace ResoniteUnityExporter
 
                         if (tangents != null)
                         {
-                            Float3_U2Res[] frameTangents = SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(deltaTangents);
+                            Float3_U2Res[] frameTangents = convertSubmesh
+                                ? ConvertSubset<Float3_U2Res, UnityEngine.Vector3>(deltaTangents, submeshesVertexSubset)
+                                : SerializationUtils.ConvertArray<Float3_U2Res, UnityEngine.Vector3>(deltaTangents);
                             for (int i = 0; i < numVertices; i++)
                             {
                                 frameTangents[i].x = frameTangents[i].x; // - tangents[i].x;
@@ -310,38 +456,84 @@ namespace ResoniteUnityExporter
                         meshx.bones[boneI].bindPose = ConvertMatrix4x4(Matrix4x4.TRS(pos, rot, scale));
                     }
                     int boneWeightIndex = 0;
-                    // unity has us traverse over all them in this weird way
-                    for (int vertexI = 0; vertexI < numVertices; vertexI++)
+
+                    if (!convertSubmesh)
                     {
-                        byte numBones = numBonesPerVertex[vertexI];
-                        BoneBinding_U2Res boneBinding = new BoneBinding_U2Res();
-                        for (int boneI = 0; boneI < numBones; boneI++)
+                        // unity has us traverse over all them in this weird way
+                        for (int vertexI = 0; vertexI < numVertices; vertexI++)
                         {
-                            UnityEngine.BoneWeight1 boneWeight = boneWeights[boneWeightIndex++];
-                            switch (boneI)
+                            byte numBones = numBonesPerVertex[vertexI];
+                            BoneBinding_U2Res boneBinding = new BoneBinding_U2Res();
+                            for (int boneI = 0; boneI < numBones; boneI++)
                             {
-                                case 0:
-                                    boneBinding.boneIndex0 = boneWeight.boneIndex;
-                                    boneBinding.weight0 = boneWeight.weight;
-                                    break;
-                                case 1:
-                                    boneBinding.boneIndex1 = boneWeight.boneIndex;
-                                    boneBinding.weight1 = boneWeight.weight;
-                                    break;
-                                case 2:
-                                    boneBinding.boneIndex2 = boneWeight.boneIndex;
-                                    boneBinding.weight2 = boneWeight.weight;
-                                    break;
-                                case 3:
-                                    boneBinding.boneIndex3 = boneWeight.boneIndex;
-                                    boneBinding.weight3 = boneWeight.weight;
-                                    break;
-                                // sadly resonite only supports up to 4 bones per vertex
-                                default:
-                                    break;
+                                UnityEngine.BoneWeight1 boneWeight = boneWeights[boneWeightIndex++];
+                                switch (boneI)
+                                {
+                                    case 0:
+                                        boneBinding.boneIndex0 = boneWeight.boneIndex;
+                                        boneBinding.weight0 = boneWeight.weight;
+                                        break;
+                                    case 1:
+                                        boneBinding.boneIndex1 = boneWeight.boneIndex;
+                                        boneBinding.weight1 = boneWeight.weight;
+                                        break;
+                                    case 2:
+                                        boneBinding.boneIndex2 = boneWeight.boneIndex;
+                                        boneBinding.weight2 = boneWeight.weight;
+                                        break;
+                                    case 3:
+                                        boneBinding.boneIndex3 = boneWeight.boneIndex;
+                                        boneBinding.weight3 = boneWeight.weight;
+                                        break;
+                                    // sadly resonite only supports up to 4 bones per vertex
+                                    default:
+                                        break;
+                                }
+                                meshx.boneBindings[vertexI] = boneBinding;
+                                // luckily unity is already sorted (todo: is decending order correct?)
                             }
-                            meshx.boneBindings[vertexI] = boneBinding;
-                            // luckily unity is already sorted (todo: is decending order correct?)
+                        }
+                    }
+                    else
+                    {
+                        int vertexPresentI = 0;
+                        // unity has us traverse over all them in this weird way
+                        for (int vertexI = 0; vertexI < numVertices; vertexI++)
+                        {
+                            byte numBones = numBonesPerVertex[vertexI];
+                            BoneBinding_U2Res boneBinding = new BoneBinding_U2Res();
+                            for (int boneI = 0; boneI < numBones; boneI++)
+                            {
+                                UnityEngine.BoneWeight1 boneWeight = boneWeights[boneWeightIndex++];
+                                switch (boneI)
+                                {
+                                    case 0:
+                                        boneBinding.boneIndex0 = boneWeight.boneIndex;
+                                        boneBinding.weight0 = boneWeight.weight;
+                                        break;
+                                    case 1:
+                                        boneBinding.boneIndex1 = boneWeight.boneIndex;
+                                        boneBinding.weight1 = boneWeight.weight;
+                                        break;
+                                    case 2:
+                                        boneBinding.boneIndex2 = boneWeight.boneIndex;
+                                        boneBinding.weight2 = boneWeight.weight;
+                                        break;
+                                    case 3:
+                                        boneBinding.boneIndex3 = boneWeight.boneIndex;
+                                        boneBinding.weight3 = boneWeight.weight;
+                                        break;
+                                    // sadly resonite only supports up to 4 bones per vertex
+                                    default:
+                                        break;
+                                }
+                                // only add vertices if they are present in submesh
+                                if (whichVerticesPresent[vertexI])
+                                {
+                                    meshx.boneBindings[vertexPresentI++] = boneBinding;
+                                }
+                                // luckily unity is already sorted (todo: is decending order correct?)
+                            }
                         }
                     }
                     //
@@ -355,9 +547,9 @@ namespace ResoniteUnityExporter
 
         // resonite wants things scaled up for ik to work correctly, so do that
         public static float FIXED_SCALE_FACTOR = 100.0f;
-        public static IEnumerable<object> SendMeshToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Mesh mesh, string[] boneNames, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
+        public static IEnumerable<object> SendMeshToResonite(HierarchyLookup hierarchyLookup, UnityEngine.Mesh mesh, string[] boneNames, int subMeshStartIndex, int subMeshEndIndex, ResoniteBridgeClient bridgeClient, OutputHolder<object> output)
         {
-            StaticMesh_U2Res convertedMesh = ConvertMesh(mesh, boneNames.ToArray(), FIXED_SCALE_FACTOR);
+            StaticMesh_U2Res convertedMesh = ConvertMesh(mesh, boneNames.ToArray(), subMeshStartIndex, subMeshEndIndex, FIXED_SCALE_FACTOR);
             convertedMesh.rootAssetsSlot = hierarchyLookup.rootAssetsSlot;
 
 
