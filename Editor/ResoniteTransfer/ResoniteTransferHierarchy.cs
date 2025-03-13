@@ -1,5 +1,4 @@
 ﻿using MemoryMappedFileIPC;
-using Mono.Cecil;
 using ResoniteBridgeLib;
 using ResoniteUnityExporter.Converters;
 using ResoniteUnityExporterShared;
@@ -8,8 +7,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Animations;
+#if RUE_HAS_VRCSDK
 using VRC.Dynamics;
-using static VRC.Dynamics.PhysBoneManager;
+#endif
 
 namespace ResoniteUnityExporter
 {

@@ -48,6 +48,7 @@ namespace ResoniteUnityExporter.Converters
             }
         }
 
+#if RUE_HAS_VRCSDK
         public static BoneInfo[] GetBones(VRCPhysBone physBone, GameObject obj, out int depth)
         {
             if (physBone.bones == null || physBone.bones.Count == 0)
@@ -123,5 +124,6 @@ namespace ResoniteUnityExporter.Converters
                 yield return e;
             }
         }
+#endif
     }
 }

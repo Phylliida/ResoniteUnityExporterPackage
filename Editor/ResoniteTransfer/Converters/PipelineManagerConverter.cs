@@ -10,6 +10,7 @@ namespace ResoniteUnityExporter.Converters
 {
     public class PipelineManagerConverter
     {
+#if RUE_HAS_VRCSDK
         // we could use vrc avatar descriptor, however some old avatars don't have that,
         // whereas pipeline manager is very common
         public static IEnumerable<object> ConvertPipelineManager(PipelineManager pipelineManager, GameObject obj, RefID_U2Res objRefId, HierarchyLookup hierarchy, ResoniteTransferSettings settings, OutputHolder<object> output)
@@ -84,4 +85,5 @@ namespace ResoniteUnityExporter.Converters
             }
         }
     }
+#endif
 }
