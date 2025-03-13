@@ -15,6 +15,7 @@ namespace ResoniteUnityExporter.Converters
             Light_U2Res lightData = new Light_U2Res()
             {
                 target = objRefID,
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 type = Enum.Parse<LightType_U2Res>(Enum.GetName(typeof(LightType), light.type)),
                 shape = Enum.Parse<LightShape_U2Res>(Enum.GetName(typeof(LightShape), light.shape)),
                 spotAngle = light.spotAngle,

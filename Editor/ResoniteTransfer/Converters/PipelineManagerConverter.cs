@@ -59,6 +59,7 @@ namespace ResoniteUnityExporter.Converters
                 avatarData = new Avatar_U2Res()
                 {
                     mainParentSlot = hierarchy.mainParentSlot,
+                    rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                     renderers = rendererRefIds,
                     floorOnOrigin = false,
                     assetsSlot = hierarchy.rootAssetsSlot,

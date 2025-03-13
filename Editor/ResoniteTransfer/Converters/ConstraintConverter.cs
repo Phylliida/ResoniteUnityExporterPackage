@@ -84,6 +84,7 @@ namespace ResoniteUnityExporter.Converters
             PositionConstraint_U2Res positionConstraintData = new PositionConstraint_U2Res()
             {
                 sources = GetVRCConstraintSources(vrcPositionConstraint.Sources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = vrcPositionConstraint.IsActive,
                 weight = vrcPositionConstraint.GlobalWeight,
                 lockConstraint = vrcPositionConstraint.Locked,
@@ -130,6 +131,7 @@ namespace ResoniteUnityExporter.Converters
             PositionConstraint_U2Res positionConstraintData = new PositionConstraint_U2Res()
             {
                 sources = GetConstraintSources(constraintSources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = positionConstraint.constraintActive,
                 weight = positionConstraint.weight,
                 lockConstraint = positionConstraint.locked,
@@ -194,6 +196,7 @@ namespace ResoniteUnityExporter.Converters
             RotationConstraint_U2Res rotationConstraintData = new RotationConstraint_U2Res()
             {
                 sources = GetVRCConstraintSources(vrcRotationConstraint.Sources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = vrcRotationConstraint.IsActive,
                 weight = vrcRotationConstraint.GlobalWeight,
                 lockConstraint = vrcRotationConstraint.Locked,
@@ -241,6 +244,7 @@ namespace ResoniteUnityExporter.Converters
             RotationConstraint_U2Res rotationConstraintData = new RotationConstraint_U2Res()
             {
                 sources = GetConstraintSources(constraintSources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = rotationConstraint.constraintActive,
                 weight = rotationConstraint.weight,
                 lockConstraint = rotationConstraint.locked,
@@ -302,6 +306,7 @@ namespace ResoniteUnityExporter.Converters
             ScaleConstraint_U2Res scaleConstraintData = new ScaleConstraint_U2Res()
             {
                 sources = GetVRCConstraintSources(vrcScaleConstraint.Sources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = vrcScaleConstraint.IsActive,
                 weight = vrcScaleConstraint.GlobalWeight,
                 lockConstraint = vrcScaleConstraint.Locked,
@@ -350,6 +355,7 @@ namespace ResoniteUnityExporter.Converters
             ScaleConstraint_U2Res scaleConstraintData = new ScaleConstraint_U2Res()
             {
                 sources = GetConstraintSources(constraintSources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = scaleConstraint.constraintActive,
                 weight = scaleConstraint.weight,
                 lockConstraint = scaleConstraint.locked,
@@ -415,6 +421,7 @@ namespace ResoniteUnityExporter.Converters
             AimConstraint_U2Res aimConstraintData = new AimConstraint_U2Res()
             {
                 sources = GetVRCConstraintSources(vrcAimConstraint.Sources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = vrcAimConstraint.IsActive,
                 weight = vrcAimConstraint.GlobalWeight,
                 aimVector = new Float3_U2Res()
@@ -482,6 +489,7 @@ namespace ResoniteUnityExporter.Converters
             AimConstraint_U2Res aimConstraintData = new AimConstraint_U2Res()
             {
                 sources = GetConstraintSources(constraintSources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = aimConstraint.constraintActive,
                 weight = aimConstraint.weight,
                 aimVector = new Float3_U2Res()
@@ -570,6 +578,7 @@ namespace ResoniteUnityExporter.Converters
             ParentConstraint_U2Res parentConstraintData = new ParentConstraint_U2Res()
             {
                 sources = GetVRCConstraintSources(vrcParentConstraint.Sources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = vrcParentConstraint.IsActive,
                 weight = vrcParentConstraint.GlobalWeight,                
                 lockConstraint = vrcParentConstraint.Locked,
@@ -624,6 +633,7 @@ namespace ResoniteUnityExporter.Converters
             ParentConstraint_U2Res parentConstraintData = new ParentConstraint_U2Res()
             {
                 sources = GetConstraintSources(constraintSources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = parentConstraint.constraintActive,
                 weight = parentConstraint.weight,
                 lockConstraint = parentConstraint.locked,
@@ -703,6 +713,7 @@ namespace ResoniteUnityExporter.Converters
             LookAtConstraint_U2Res lookAtConstraintData = new LookAtConstraint_U2Res()
             {
                 sources = GetVRCConstraintSources(vrcLookAtConstraint.Sources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = vrcLookAtConstraint.IsActive,
                 weight = vrcLookAtConstraint.GlobalWeight,
                 useUpObject = vrcLookAtConstraint.UseUpTransform,
@@ -754,6 +765,7 @@ namespace ResoniteUnityExporter.Converters
             LookAtConstraint_U2Res lookAtConstraintData = new LookAtConstraint_U2Res()
             {
                 sources = GetConstraintSources(constraintSources, hierarchy),
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 isActive = lookAtConstraint.constraintActive,
                 weight = lookAtConstraint.weight,
                 useUpObject = lookAtConstraint.useUpObject,

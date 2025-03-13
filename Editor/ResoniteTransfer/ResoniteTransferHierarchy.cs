@@ -463,6 +463,7 @@ namespace ResoniteUnityExporter
             ObjectHierarchy_U2Res hierarchyData = new ObjectHierarchy_U2Res()
             {
                 hierarchyName = hierarchyName,
+                rescaleFactor = ResoniteTransferMesh.FIXED_SCALE_FACTOR,
                 objects = convertedObjects
             };
 

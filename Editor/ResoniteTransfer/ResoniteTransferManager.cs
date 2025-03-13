@@ -53,6 +53,12 @@ namespace ResoniteUnityExporter
             this.settings = settings;
             this.rootTransform = rootTransform;
 
+            // only do scale and unscale if we are making avatar
+            // otherwise no need to do that
+            ResoniteTransferMesh.FIXED_SCALE_FACTOR =
+                this.settings.makeAvatar
+                ? 100.0f
+                : 1.0f;
 
             bool duplicated = false;
             bool ranPreprocess = false;
