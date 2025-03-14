@@ -59,7 +59,8 @@ namespace ResoniteUnityExporter
             materialData.intNames = intNames;
             materialData.intValues = intValues.ToArray();
 
-            string[] keywords = material.shaderKeywords;
+            string[] keywords = material.shader.keywordSpace.keywordNames;
+
             bool[] keywordValues = keywords.Select(keyword => material.IsKeywordEnabled(keyword)).ToArray();
             materialData.keywords = keywords;
             materialData.keywordValues = keywordValues;
